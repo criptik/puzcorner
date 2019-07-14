@@ -7,6 +7,7 @@ class DiffInfo(object):
         self.ary = []
         self.len = 0
         self.umap = {}
+        self.known_dups = False
         
     def addtup(self, tup):
         self.ary.append(tup)
@@ -16,7 +17,12 @@ class DiffInfo(object):
         self.umap[n] = 1
 
     def all_unique(self):
-        return len(self.umap.keys()) == self.len * 2
+        if True and self.known_dups:
+            return False
+        else:
+            self.known_dups = len(self.umap.keys()) != self.len * 2
+            return not self.known_dups
+        
     
 class DiffSet(object):
     def __init__(self, allowDups):
@@ -25,14 +31,14 @@ class DiffSet(object):
         self.allowDups = allowDups
         self.maxes = []           
 
-    def add_top_col(self, top):
+    def add_top_col(self, top, expon):
         for m in range (1, top-1):
-            diff = top*top - m*m
+            diff = abs(pow(top, expon) - pow(m, expon))
             if self.map.get(diff) == None:
                 self.map[diff] = DiffInfo()
             self.map[diff].addtup((m, top))
             newlen = self.map[diff].len
-            if newlen >= self.maxcount and (self.allowDups or self.map[diff].all_unique()):
+            if newlen >= self.maxcount and newlen > 1 and (self.allowDups or self.map[diff].all_unique()):
                 if newlen > self.maxcount:
                     self.maxcount = newlen
                     self.maxes = []
@@ -59,10 +65,10 @@ def parse_args():
     parser.add_argument('--high', type=int, default=100, help='high value for scan or single value for single')
     parser.add_argument('--action', default='single', help='single=show for single value at high, scan=scan from low to high')
     parser.add_argument('--allow-dups', default=False, action='store_true', help='true if duplicates allowed between tuples')
+    parser.add_argument('--power', type=int, default=2, help='diff of m,n to this power')
     return parser.parse_args()
 
-# A function to print all prime factors of  
-# a given number n 
+# A function to find all prime factors of a given number n 
 def primeFactors(n): 
     ans = []
     
@@ -86,9 +92,9 @@ def primeFactors(n):
     return ans
 
 
-def try_with_top(dset, top):
+def compute_single(dset, top, expon):
     for m in range(2, top+1):
-        dset.add_top_col(m)
+        dset.add_top_col(m, expon)
 
     return dset.find_maxes()
     
@@ -97,19 +103,20 @@ def try_with_top(dset, top):
 args = parse_args()
 if args.action == 'single':
     dset = DiffSet(args.allow_dups)
-    maxes = try_with_top(dset, args.high)
+    maxes = compute_single(dset, args.high, args.power)
     dset.show_maxes(maxes)
 
 else:
     maxmax = 0
     dset = DiffSet(args.allow_dups)
     # seed with args.low
-    maxes = try_with_top(dset, args.low)
+    maxes = compute_single(dset, args.low, args.power)
     for xtop in range(args.low+1, args.high):
-        dset.add_top_col(xtop)
+        dset.add_top_col(xtop, args.power)
         
         if dset.maxcount > maxmax:
             maxmax = dset.maxcount
             print(xtop, dset.maxcount)
-        
+            dset.show_maxes(dset.find_maxes())
+            print()
         
