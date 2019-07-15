@@ -31,18 +31,22 @@ class DiffSet(object):
         self.allowDups = allowDups
         self.maxes = []           
 
-    def add_top_col(self, top, expon):
+    def add_top_col(self, top, args):
+        expon = args.power
         for m in range (1, top-1):
-            diff = abs(pow(top, expon) - pow(m, expon))
-            if self.map.get(diff) == None:
-                self.map[diff] = DiffInfo()
-            self.map[diff].addtup((m, top))
-            newlen = self.map[diff].len
-            if newlen >= self.maxcount and newlen > 1 and (self.allowDups or self.map[diff].all_unique()):
+            if args.use_sum:
+                result = pow(top, expon) + pow(m, expon)
+            else:
+                result = abs(pow(top, expon) - pow(m, expon))
+            if self.map.get(result) == None:
+                self.map[result] = DiffInfo()
+            self.map[result].addtup((m, top))
+            newlen = self.map[result].len
+            if newlen >= self.maxcount and newlen > 1 and (self.allowDups or self.map[result].all_unique()):
                 if newlen > self.maxcount:
                     self.maxcount = newlen
                     self.maxes = []
-                self.maxes.append(diff)
+                self.maxes.append(result)
 
     def find_maxes(self):
         # find the ones with the biggest count and optionally all unique
@@ -66,6 +70,7 @@ def parse_args():
     parser.add_argument('--action', default='single', help='single=show for single value at high, scan=scan from low to high')
     parser.add_argument('--allow-dups', default=False, action='store_true', help='true if duplicates allowed between tuples')
     parser.add_argument('--power', type=int, default=2, help='diff of m,n to this power')
+    parser.add_argument('--use-sum', default=False, action='store_true', help='use sum of pows rather than diff')
     return parser.parse_args()
 
 # A function to find all prime factors of a given number n 
@@ -92,9 +97,9 @@ def primeFactors(n):
     return ans
 
 
-def compute_single(dset, top, expon):
+def compute_single(dset, top, args):
     for m in range(2, top+1):
-        dset.add_top_col(m, expon)
+        dset.add_top_col(m, args)
 
     return dset.find_maxes()
     
@@ -103,16 +108,16 @@ def compute_single(dset, top, expon):
 args = parse_args()
 if args.action == 'single':
     dset = DiffSet(args.allow_dups)
-    maxes = compute_single(dset, args.high, args.power)
+    maxes = compute_single(dset, args.high, args)
     dset.show_maxes(maxes)
 
 else:
     maxmax = 0
     dset = DiffSet(args.allow_dups)
     # seed with args.low
-    maxes = compute_single(dset, args.low, args.power)
+    maxes = compute_single(dset, args.low, args)
     for xtop in range(args.low+1, args.high):
-        dset.add_top_col(xtop, args.power)
+        dset.add_top_col(xtop, args)
         
         if dset.maxcount > maxmax:
             maxmax = dset.maxcount
