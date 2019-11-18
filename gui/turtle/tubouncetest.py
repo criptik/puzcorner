@@ -31,27 +31,61 @@ def solveForY(posOrig, m, xNew):
     (xOrig, yOrig) = posOrig
     y = (xNew - xOrig) * m + yOrig
     return y
-    
+
+# find the intersection if any with the sqsiz boundary,
+# given the current position and angle
 def findIntersect(angle, sqsiz):
     posOrig = t.pos()
-    print(posOrig)
+    print("posOrig is ", posOrig)
     (xOrig, yOrig) = posOrig
     rads = math.radians(angle)
-    print("rads=", rads)
+    # print("rads=", rads)
     m = math.tan(rads)
-    print("slope=", m)
-    # calculate y intersect with x==sqsiz and x==0
-    yright = solveForY(posOrig, m, sqsiz)
-    print("yright=", yright)
-    yleft = solveForY(posOrig, m, 0)
-    print("yleft=", yleft)
-    # calculate x intersect with y==sqsiz and y == 0
-    xtop = solveForX(posOrig, m, sqsiz)
-    print("xtop=", xtop)
-    xbot = solveForX(posOrig, m, 0)
-    print("xbot=", xbot)
-    
-    return yright
+    angsin = math.sin(rads)
+    angcos = math.cos(rads)    
+    print('slope=%f, sin=%f, cos=%f'% (m, angsin, angcos))
+
+    # horizontal or vertical directions
+    if angcos == 0 and angsin > 0:
+        return(xOrig, sqsiz)
+    elif angcos == 0 and angsin < 0:
+        return(xOrig, 0)
+    elif angsin == 0 and angcos > 0:
+        return(sqsiz, yOrig)
+    elif angsin == 0 and angcos < 0:
+        return(0, yOrig)
+    else:
+        # calculate the 4 possible intersects
+        yright = solveForY(posOrig, m, sqsiz)
+        print("yright=", yright)
+        yleft = solveForY(posOrig, m, 0)
+        print("yleft=", yleft)
+        # calculate x intersect with y==sqsiz and y == 0
+        xtop = solveForX(posOrig, m, sqsiz)
+        print("xtop=", xtop)
+        xbot = solveForX(posOrig, m, 0)
+        print("xbot=", xbot)
+        if angsin > 0 and angcos > 0:
+            if yright <= sqsiz:
+                return (sqsiz, yright)
+            else:
+                return (xtop, sqsiz)
+        elif angsin > 0 and angcos < 0:
+            if yleft <= sqsiz:
+                return (0, yleft)
+            else:
+                return (xtop, sqsiz)
+        elif angsin < 0 and angcos > 0:
+            if yright >= 0:
+                return (sqsiz, yright)
+            else:
+                return (xbot, 0)
+        elif angsin < 0 and angcos < 0:
+            if xbot >= 0:
+                return (xbot, 0)
+            else:
+                return (0, yleft)
+
     
     
 #root = TK.Tk()
@@ -63,15 +97,24 @@ scr.colormode(255)
 print(scr.mode())
 sqsiz = 300
 drawSquare(sqsiz)
-t.setpos(100, 200)
+xStart = 280
+yStart = 20
+t.pencolor("red")
+t.setpos(xStart, yStart)
+t.pencolor("black")
 side = 0
 
 # headTest = float(input("degrees?").rstrip())
-headTest = 89
-t.setheading(headTest)
-y = findIntersect(headTest, sqsiz)
-print(y)
-t.goto(sqsiz, y)
+# for headTest in [350]:
+for headTest in [30, 80, 110, 160, 180, 260, 280, 350, 270, 0, 90]:
+    t.setheading(headTest)
+    pos = findIntersect(headTest, sqsiz)
+    print('for %d, pos is' % headTest, pos)
+    t.pendown()
+    t.goto(pos)
+    t.penup()
+    t.setpos(xStart, yStart)
+#t.goto(sqsiz, y)
 
 turtle.done()
 
