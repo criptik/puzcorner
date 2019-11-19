@@ -42,7 +42,12 @@ def findIntersect(angle, sqsiz):
     # print("rads=", rads)
     m = math.tan(rads)
     angsin = math.sin(rads)
-    angcos = math.cos(rads)    
+    angcos = math.cos(rads)
+    if abs(angcos) < 1e-15:
+        angcos = 0
+    if abs(angsin) < 1e-15:
+        angsin = 0
+    
     print('slope=%f, sin=%f, cos=%f'% (m, angsin, angcos))
 
     # horizontal or vertical directions
@@ -97,17 +102,18 @@ scr.colormode(255)
 print(scr.mode())
 sqsiz = 300
 drawSquare(sqsiz)
-xStart = 280
-yStart = 20
+xStart = 150
+yStart = 130
 t.pencolor("red")
 t.setpos(xStart, yStart)
 t.pencolor("black")
 side = 0
 
 # headTest = float(input("degrees?").rstrip())
-# for headTest in [350]:
-for headTest in [30, 80, 110, 160, 180, 260, 280, 350, 270, 0, 90]:
+# for headTest in [180]:
+for headTest in [30, 80, 110, 160, 200, 260, 280, 350, 270, 0, 90,  180]:
     t.setheading(headTest)
+    print('Computing for %d' % headTest)
     pos = findIntersect(headTest, sqsiz)
     print('for %d, pos is' % headTest, pos)
     t.pendown()
