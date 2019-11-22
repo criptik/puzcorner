@@ -101,6 +101,7 @@ side = 0
 # headTest = float(input("degrees?").rstrip())
 # for headTest in [180]:
 scr.title("Testing...")
+dbg = True
 for headTest in [30, 80, 110, 160, 210, 260, 280, 340, 270, 0, 90,  180]:
     t.setheading(headTest)
     dbgprint('Computing for %d' % headTest)
@@ -120,6 +121,7 @@ t.pendown()
 drawSquare(sqsiz)
 
 scr.title("Bouncing")
+dbg = False
 newhead = random() * 90
 randerr = True
 t.pendown()
