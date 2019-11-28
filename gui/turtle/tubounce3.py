@@ -2,8 +2,7 @@
 import sys
 import time
 import turtle
-from random import randint
-from random import random
+from random import *
 import math
 
 global dbg
@@ -134,7 +133,7 @@ dbgprint(scr.mode())
 sqsiz = 300
 drawSquare(sqsiz)
 t.penup()
-smsqsiz = 40
+smsqsiz = 100
 t.goto(sqsiz/2 - smsqsiz/2, sqsiz/2 - smsqsiz/2)
 
 t.pendown()
@@ -171,7 +170,7 @@ t.setheading(0)
 t.pendown()
 drawSquare(sqsiz)
 t.penup()
-smsqsiz = 40
+smsqsiz = 100
 t.goto(sqsiz/2 - smsqsiz/2, sqsiz/2 - smsqsiz/2)
 t.pendown()
 drawSquare(smsqsiz)
