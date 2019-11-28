@@ -6,12 +6,18 @@ from random import *
 import math
 
 global dbg
-global hitSmall
 
 def dbgprint(*args):
     if dbg:
         print(args)
     
+def vectorEnd(x1, y1, ang, len):
+    angrad = math.radians(ang)
+    angcos = math.cos(angrad)
+    angsin = math.sin(angrad)
+    x2 = x1 + len * angcos
+    y2 = y1 + len * angsin
+    return (x2, y2)
 
 # a wall is basically a line
 class Wall:
@@ -26,10 +32,18 @@ class Wall:
         else:
             self.mw = (y2-y1)/(x2-x1)
             self.ang = math.degrees(math.atan(self.mw))
+
+    @classmethod
+    def fromVector(cls, x1, y1, ang, len):
+        (x2, y2) = vectorEnd(x1, y1, ang, len)
+        return cls(x1, y1, x2, y2)
             
     def __str__(self):
         return('(%d,%d) to (%d,%d), slope=%f, ang=%f' % (self.x1, self.y1, self.x2, self.y2, self.mw, self.ang))
 
+    def x2y2(self):
+        return(self.x2, self.y2)
+    
     def containsPoint(self, x, y):
         if self.y1 == 100:
             pass
@@ -40,6 +54,7 @@ class Wall:
         t.penup()
         t.goto(self.x1, self.y1)
         t.pendown()
+        t.pencolor("red")
         t.goto(self.x2, self.y2)
         
 def genSquareWalls(x0, y0, siz):
@@ -50,12 +65,13 @@ def genSquareWalls(x0, y0, siz):
     a.append(Wall(x0, y0, x0, y0+siz))
     return a         
 
-def genTriangleWalls(x0, y0, siz):
-    a = []
-    a.append(Wall(x0, y0, x0+siz, y0))
-    a.append(Wall(x0+siz, y0, x0+siz/2, siz))
-    a.append(Wall(x0+siz/2, siz, x0, y0))
-    return a
+def genTriangleWalls(x0, y0, heading, sidelen):
+    side1 = Wall.fromVector(x0, y0, heading, sidelen)
+    (x, y) = side1.x2y2()
+    side2 = Wall.fromVector(x, y, heading + 120, sidelen)
+    (x, y) = side2.x2y2()
+    side3 = Wall.fromVector(x, y, heading + 240, sidelen)
+    return [side1, side2, side3]
 
 # notes
 # call (y2-y1)/(x2-x1) = mw
@@ -99,7 +115,8 @@ def genTriangleWalls(x0, y0, siz):
 class World:
     def __init__(self, walls):
         self.walls = walls
-
+        self.wallHit = None
+        
     def draw(self, t):
         t.clear()
         for wall in self.walls:
@@ -152,7 +169,7 @@ class World:
     
     # find the intersection with any wall
     # given the current position and angle
-    def findIntersect(self, posOrig, angle):
+    def findIntersect(self, posOrig, angle, excludeWalls=[]):
         dbgprint("posOrig is ", posOrig)
         (x0, y0) = posOrig
 
@@ -175,6 +192,8 @@ class World:
         self.xret = None
         self.yret = None
         for wall in self.walls:
+            if wall in excludeWalls:
+                continue
             xint = None
             yint = None
             dbgprint('wall is %s' % (wall))
@@ -232,24 +251,27 @@ mywalls = []
 sqsiz = 300
 smsqsiz = 50
 mywalls.extend(genSquareWalls(0, 0, sqsiz))
-# mywalls.extend(genSquareWalls(sqsiz/2 - smsqsiz/2, sqsiz/2 - smsqsiz/2, smsqsiz))
-mywalls.extend(genTriangleWalls(sqsiz/2 - smsqsiz/2, sqsiz/2 - smsqsiz/2, smsqsiz))
-# del mywalls[7]
+if True:
+    # mywalls.extend(genSquareWalls(sqsiz/2 - smsqsiz/2, sqsiz/2 - smsqsiz/2, smsqsiz))
+    mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*4))
+else:
+    mywalls.append(Wall(50, 0, 50, 250))
+    mywalls.append(Wall(100, 300, 100, 50))
+    mywalls.append(Wall(150, 0, 150, 250))
+    
 for w in mywalls:
     print(w)
     
 world = World(mywalls)
 world.draw(t)
 
-xStart = 100
-yStart = 50
-t.pencolor("red")
+xStart = 25
+yStart = 25
 t.setpos(xStart, yStart)
 t.pencolor("black")
 
 scr.title("Testing...")
 dbg = True
-hitSmall = False
 for headTest in [80, 115, 80, 30, 160, 210, 260, 280, 340, 270, 0, 90,  180]:
     t.setheading(headTest)
     dbgprint('Computing for %d' % headTest)
@@ -268,6 +290,7 @@ dbg = False
 t.clear()
 t.penup()
 world.draw(t)
+t.pencolor("black")
 t.goto(100, 50)
 # sys.exit()
 
@@ -275,11 +298,13 @@ scr.title("Bouncing")
 dbg = False
 newhead = random() * 90
 randerr = True
-t.pendown()
+if True:
+    t.pendown()
 t.speed(10)
+excludes = []
 while True:
     t.setheading(newhead)
-    pos = world.findIntersect(t.pos(), newhead)
+    pos = world.findIntersect(t.pos(), newhead, excludes)
     (posx, posy) = pos
     dbgprint(newhead, posx, posy)
     if posx == None:
@@ -293,15 +318,14 @@ while True:
         # this only handles the horiz and vertical walls
         # will generalize later
         wallHit = world.getWallHit()
-        if True:
-            newhead = (2 * wallHit.ang - newhead) % 360
-        else:
-            if wallHit.mw == math.inf:
-                newhead = (180 - newhead) % 360
-            elif wallHit.mw == 0:
-                newhead = (360 - newhead) % 360
+        if wallHit in mywalls[5:7]:
+            pass
+            
+        newhead = (2 * wallHit.ang - newhead) % 360
         if randerr:
             newhead = newhead + (random()*5 - 2.5)
+        # for next time, make sure we don't hit the same wall.
+        excludes = [wallHit]
             
 turtle.done()
 
