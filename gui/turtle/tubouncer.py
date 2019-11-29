@@ -45,10 +45,9 @@ class Wall:
         return(self.x2, self.y2)
     
     def containsPoint(self, x, y):
-        if self.y1 == 100:
-            pass
-        return ((self.x1 <= x <= self.x2 or self.x1 >= x >= self.x2)
-                and (self.y1 <= y <= self.y2 or self.y1 >= y >= self.y2))
+        dbgprint('containsPoint', x, y, self.x1, self.y1, self.x2, self.y2)
+        return ((self.x1 <= x <= self.x2 or self.x1 >= x >= self.x2 or self.x1 == self.x2)
+                and (self.y1 <= y <= self.y2 or self.y1 >= y >= self.y2 or self.y1 == self.y2))
 
     def draw(self, t):
         t.penup()
@@ -57,7 +56,19 @@ class Wall:
         t.pencolor("red")
         t.goto(self.x2, self.y2)
         
-def genSquareWalls(x0, y0, siz):
+def genPolygonWalls(x0, y0, numsides, heading, sidelen, headingChange=None):
+    a = []
+    if headingChange is None:
+        headingChange = 360/numsides
+    a.append(Wall.fromVector(x0, y0, heading, sidelen))
+    for n in range(numsides-1):
+        heading = heading + headingChange
+        print(heading)
+        a.append(Wall.fromVector(*(a[-1].x2y2()), heading, sidelen))
+
+    return a    
+
+def genSquareWalls(x0, y0, heading, siz):
     a = []
     a.append(Wall(x0, y0, x0+siz, y0))
     a.append(Wall(x0+siz, y0, x0+siz, y0+siz))
@@ -65,13 +76,13 @@ def genSquareWalls(x0, y0, siz):
     a.append(Wall(x0, y0, x0, y0+siz))
     return a         
 
+# rounding errors?
+def genSquareWalls2(x0, y0, heading, sidelen):
+    return genPolygonWalls(x0, y0, 4, heading, sidelen)
+
 def genTriangleWalls(x0, y0, heading, sidelen):
-    side1 = Wall.fromVector(x0, y0, heading, sidelen)
-    (x, y) = side1.x2y2()
-    side2 = Wall.fromVector(x, y, heading + 120, sidelen)
-    (x, y) = side2.x2y2()
-    side3 = Wall.fromVector(x, y, heading + 240, sidelen)
-    return [side1, side2, side3]
+    return genPolygonWalls(x0, y0, 3, heading, sidelen)
+
 
 # notes
 # call (y2-y1)/(x2-x1) = mw
@@ -154,6 +165,7 @@ class World:
         
     def isValidIntersection(self, wall, x0, y0, xint, yint, angsin, angcos):
         if not wall.containsPoint(xint, yint):
+            dbgprint('does not contain (%f, %f)' % (xint, yint))
             return False
         dbgprint('wall does contain (%f, %f)' % (xint, yint))
         rightDirection = self.isRightDirection(x0, y0, xint, yint, angsin, angcos)
@@ -250,14 +262,15 @@ scr.colormode(255)
 mywalls = []
 sqsiz = 300
 smsqsiz = 50
-mywalls.extend(genSquareWalls(0, 0, sqsiz))
+mywalls.extend(genSquareWalls(0, 0, 0, sqsiz))
 if True:
-    # mywalls.extend(genSquareWalls(sqsiz/2 - smsqsiz/2, sqsiz/2 - smsqsiz/2, smsqsiz))
     mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*4))
 else:
-    mywalls.append(Wall(50, 0, 50, 250))
-    mywalls.append(Wall(100, 300, 100, 50))
-    mywalls.append(Wall(150, 0, 150, 250))
+    mywalls.append(Wall(50, 0, 50, 280))
+    mywalls.append(Wall(100, 300, 100, 20))
+    mywalls.append(Wall(150, 0, 150, 280))
+    mywalls.append(Wall(200, 300, 200, 20))
+    mywalls.append(Wall(250, 0, 250, 280))
     
 for w in mywalls:
     print(w)
@@ -271,8 +284,8 @@ t.setpos(xStart, yStart)
 t.pencolor("black")
 
 scr.title("Testing...")
-dbg = True
-for headTest in [80, 115, 80, 30, 160, 210, 260, 280, 340, 270, 0, 90,  180]:
+dbg = False
+for headTest in [82.24861134413653, 115, 80, 30, 160, 210, 260, 280, 340, 270, 0, 90,  180]:
     t.setheading(headTest)
     dbgprint('Computing for %d' % headTest)
     pos = world.findIntersect(t.pos(), headTest)
@@ -285,7 +298,6 @@ for headTest in [80, 115, 80, 30, 160, 210, 260, 280, 340, 270, 0, 90,  180]:
     # sys.exit()
 
 time.sleep(3)
-dbg = False
 
 t.clear()
 t.penup()
@@ -300,7 +312,7 @@ newhead = random() * 90
 randerr = True
 if True:
     t.pendown()
-t.speed(10)
+t.speed(0)
 excludes = []
 while True:
     t.setheading(newhead)
@@ -308,10 +320,13 @@ while True:
     (posx, posy) = pos
     dbgprint(newhead, posx, posy)
     if posx == None:
+        print(t.pos(), newhead, excludes, pos)
         time.sleep(10)
         sys.exit()
         continue
     t.goto(pos)
+    # t.dot(5, "blue")
+    
     if False:
         newhead = random() * 360
     else:
