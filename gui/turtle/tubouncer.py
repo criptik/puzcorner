@@ -43,11 +43,22 @@ class Wall:
 
     def x2y2(self):
         return(self.x2, self.y2)
-    
+
     def containsPoint(self, x, y):
-        dbgprint('containsPoint', x, y, self.x1, self.y1, self.x2, self.y2)
-        return ((self.x1 <= x <= self.x2 or self.x1 >= x >= self.x2 or self.x1 == self.x2)
-                and (self.y1 <= y <= self.y2 or self.y1 >= y >= self.y2 or self.y1 == self.y2))
+        e = 0.1
+        if self.x1 < self.x2:
+            xpart = self.x1-e <= x <= self.x2+e
+        elif self.x1 > self.x2:
+            xpart = self.x2-e <= x <= self.x1+e
+        else:
+            xpart = True
+        if self.y1 < self.y2:
+            ypart = self.y1-e <= y <= self.y2+e
+        elif self.y1 > self.y2:
+            ypart = self.y2-e <= y <= self.y1+e
+        else:
+            ypart = True
+        return xpart and ypart
 
     def draw(self, t):
         t.penup()
@@ -68,16 +79,8 @@ def genPolygonWalls(x0, y0, numsides, heading, sidelen, headingChange=None):
 
     return a    
 
-def genSquareWalls(x0, y0, heading, siz):
-    a = []
-    a.append(Wall(x0, y0, x0+siz, y0))
-    a.append(Wall(x0+siz, y0, x0+siz, y0+siz))
-    a.append(Wall(x0, y0+siz, x0+siz, y0+siz))
-    a.append(Wall(x0, y0, x0, y0+siz))
-    return a         
-
 # rounding errors?
-def genSquareWalls2(x0, y0, heading, sidelen):
+def genSquareWalls(x0, y0, heading, sidelen):
     return genPolygonWalls(x0, y0, 4, heading, sidelen)
 
 def genTriangleWalls(x0, y0, heading, sidelen):
@@ -263,6 +266,7 @@ mywalls = []
 sqsiz = 300
 smsqsiz = 50
 mywalls.extend(genSquareWalls(0, 0, 0, sqsiz))
+    
 if True:
     mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*4))
 else:
