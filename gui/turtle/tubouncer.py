@@ -4,7 +4,7 @@ import time
 import turtle
 from random import *
 import math
-
+from abc import ABC, abstractmethod
 global dbg
 
 def dbgprint(*args):
@@ -19,8 +19,27 @@ def vectorEnd(x1, y1, ang, len):
     y2 = y1 + len * angsin
     return (x2, y2)
 
-# a wall is basically a line
-class Wall:
+# the abstract class Wall
+class Wall(ABC):
+    @abstractmethod
+    def __str__(self):
+        pass
+
+    @abstractmethod
+    def draw(self):
+        pass
+
+    @abstractmethod
+    def getTurtleIntersection(self, x0, y0, mt):
+        pass
+
+    @abstractmethod
+    def reflectAngle(self, oldheading, xint, yint):
+        pass
+    
+# the linear wall here is basically a line segment
+# later we should generalize to other shapes
+class LinearWall(Wall):
     def __init__(self, x1, y1, x2, y2):
         self.x1 = x1
         self.x2 = x2
@@ -66,65 +85,100 @@ class Wall:
         t.pendown()
         t.pencolor("red")
         t.goto(self.x2, self.y2)
-        
+
+    # in the LinearWall class, reflectAngle does not use
+    # xint, yint but other types of walls might.
+    def reflectAngle(self, oldheading, xint, yint):
+        return (2 * self.ang - newhead) % 360
+    
+    # notes
+    # call (y2-y1)/(x2-x1) = mw
+
+    # wall equation is y=y1 + (x-x1)*mw
+    # turt equation is y=y0 + (x-x0)*mt
+    # so at intersection:
+    # y1 + (x-x1)*mw = y0 + mt*(x-x0)
+    # y1 + mw*x - x1*mw = y0 + mt*x - mt*x0
+    # x*(mt-mw) + mw*x1 - mt*x0 = (y1-y0)
+    # x = (y1-y0 - mw*x1 + mt*x0)/(mt-mw)
+
+    # special case:  wall line x=constant (vertical), so mw = inf
+    # then equations are x=x1 and y=(x-x0)*mt + y0
+    # so solve for y get:
+    # y = (x1-x0)*mt + y0
+    #
+    # special case 2: turang is 90 or 180 so turslope = inf
+    # then tur equation is x=x0
+    # then eqs are x=x0 (tur) and y=(x-x1)*mw + y1 (wall)
+    # so solve for y get:
+    # y = (x0-x1)*mw + y1
+
+    # example:
+    # wall(vert) = 300, 0, 300, 300,  turtang=30(mt=0.5), turpos=(150, 150)
+    # y = (300-150)*0.5 + 150 = 225
+
+    # example (turt vert):
+    # wall = 300, 0, 0 300, (mw=-1)  turtang=90, turpos=(60, 60)
+    # y = (60-300)*(-1) + 0 = 225
+    # y = 240 + 0 = 240
+
+    # example:
+    # wall = 150, 300, 300, 150  turtang=45(mt=1), turpos=(0,0)
+    # mw = -1
+    # x = (y1-y0 - mw*x1 + mt*x0)/(mt-mw)
+    # xint = (300-0 - (-1*150) + 1*0)/(1 - -1)
+    #      = 450/2 = 225
+    # yint = x0 + mt*x-x0 = 0 + 1*225 = 150
+
+    # special case if wall and turtle path are parallel
+    def getTurtleIntersection(self, x0, y0, mt):
+        xint = None
+        yint = None
+        if self.mw == mt:
+            dbgprint('skipping %s, parallel to turtle' % (self))
+
+        # special case if self is vertical (equation x=x1)
+        elif self.mw == math.inf:
+            yint = (self.x1 - x0) * mt + y0
+            xint = self.x1
+
+        # special case if turtle path is vertical (equation x=x0)
+        elif mt == math.inf:
+            yint = (x0-self.x1) * self.mw + self.y1
+            xint = x0
+
+        else:
+            xint = (self.y1 - y0 - self.mw * self.x1 + mt * x0)/(mt - self.mw)
+            yint = y0 + (xint - x0) * mt
+            # special cases for vertical, etc.
+            if self.x1 == self.x2:
+                xint = self.x1
+            if self.y1 == self.y2:
+                yint = self.y1
+        # now only return if wall really contains that point.
+        if self.containsPoint(xint, yint):
+            dbgprint('wall does contain (%f, %f)' % (xint, yint))
+            return (xint, yint)
+        else:
+            return (None, None)
+    
 def genPolygonWalls(x0, y0, numsides, heading, sidelen, headingChange=None):
     a = []
     if headingChange is None:
         headingChange = 360/numsides
-    a.append(Wall.fromVector(x0, y0, heading, sidelen))
+    a.append(LinearWall.fromVector(x0, y0, heading, sidelen))
     for n in range(numsides-1):
         heading = heading + headingChange
-        print(heading)
-        a.append(Wall.fromVector(*(a[-1].x2y2()), heading, sidelen))
+        a.append(LinearWall.fromVector(*(a[-1].x2y2()), heading, sidelen))
 
     return a    
 
-# rounding errors?
 def genSquareWalls(x0, y0, heading, sidelen):
     return genPolygonWalls(x0, y0, 4, heading, sidelen)
 
 def genTriangleWalls(x0, y0, heading, sidelen):
     return genPolygonWalls(x0, y0, 3, heading, sidelen)
 
-
-# notes
-# call (y2-y1)/(x2-x1) = mw
-
-# wall equation is y=y1 + (x-x1)*mw
-# turt equation is y=y0 + (x-x0)*mt
-# so at intersection:
-# y1 + (x-x1)*mw = y0 + mt*(x-x0)
-# y1 + mw*x - x1*mw = y0 + mt*x - mt*x0
-# x*(mt-mw) + mw*x1 - mt*x0 = (y1-y0)
-# x = (y1-y0 - mw*x1 + mt*x0)/(mt-mw)
-
-# special case:  wall line x=constant (vertical), so mw = inf
-# then equations are x=x1 and y=(x-x0)*mt + y0
-# so solve for y get:
-# y = (x1-x0)*mt + y0
-#
-# special case 2: turang is 90 or 180 so turslope = inf
-# then tur equation is x=x0
-# then eqs are x=x0 (tur) and y=(x-x1)*mw + y1 (wall)
-# so solve for y get:
-# y = (x0-x1)*mw + y1
-
-# example:
-# wall(vert) = 300, 0, 300, 300,  turtang=30(mt=0.5), turpos=(150, 150)
-# y = (300-150)*0.5 + 150 = 225
-
-# example (turt vert):
-# wall = 300, 0, 0 300, (mw=-1)  turtang=90, turpos=(60, 60)
-# y = (60-300)*(-1) + 0 = 225
-# y = 240 + 0 = 240
-
-# example:
-# wall = 150, 300, 300, 150  turtang=45(mt=1), turpos=(0,0)
-# mw = -1
-# x = (y1-y0 - mw*x1 + mt*x0)/(mt-mw)
-# xint = (300-0 - (-1*150) + 1*0)/(1 - -1)
-#      = 450/2 = 225
-# yint = x0 + mt*x-x0 = 0 + 1*225 = 150
 
 class World:
     def __init__(self, walls):
@@ -167,10 +221,6 @@ class World:
         return False
         
     def isValidIntersection(self, wall, x0, y0, xint, yint, angsin, angcos):
-        if not wall.containsPoint(xint, yint):
-            dbgprint('does not contain (%f, %f)' % (xint, yint))
-            return False
-        dbgprint('wall does contain (%f, %f)' % (xint, yint))
         rightDirection = self.isRightDirection(x0, y0, xint, yint, angsin, angcos)
         dbgprint('rightDirection = %s' % rightDirection)
         if not rightDirection:
@@ -209,40 +259,17 @@ class World:
         for wall in self.walls:
             if wall in excludeWalls:
                 continue
-            xint = None
-            yint = None
             dbgprint('wall is %s' % (wall))
-            # special case if wall and turtle path are parallel
-            if wall.mw == mt:
-                dbgprint('skipping %s, parallel to turtle' % (wall))
-
-            # special case if wall is vertical (equation x=x1)
-            elif wall.mw == math.inf:
-                yint = (wall.x1 - x0) * mt + y0
-                xint = wall.x1
-
-            # special case if turtle path is vertical (equation x=x0)
-            elif mt == math.inf:
-                yint = (x0-wall.x1) * wall.mw + wall.y1
-                xint = x0
-
-            else:
-                xint = (wall.y1 - y0 - wall.mw * wall.x1 + mt * x0)/(mt - wall.mw)
-                yint = y0 + (xint - x0) * mt
-                # special cases for vertical, etc.
-                if wall.x1 == wall.x2:
-                    xint = wall.x1
-                if wall.y1 == wall.y2:
-                    yint = wall.y1
+            (xint, yint) = wall.getTurtleIntersection(x0, y0, mt)
                     
             # if we computed a wall turtle intersection, see if it is really on a wall
             # and also whether it is in the right turtle direction, and is earlier than any existing one
             if xint is not None:
                 dbgprint('computed intersection at (%f,%f)' % (xint, yint))
-            if xint is not None and self.isValidIntersection(wall, x0, y0, xint, yint, angsin, angcos):
-                self.xret = xint
-                self.yret = yint
-                self.wallHit = wall
+                if self.isValidIntersection(wall, x0, y0, xint, yint, angsin, angcos):
+                    self.xret = xint
+                    self.yret = yint
+                    self.wallHit = wall
                     
 
         # having finished all walls, xret,yret should conotain the first intersect
@@ -265,16 +292,18 @@ scr.colormode(255)
 mywalls = []
 sqsiz = 300
 smsqsiz = 50
-mywalls.extend(genSquareWalls(0, 0, 0, sqsiz))
+mywalls.extend(genSquareWalls(-100, 0, -30, sqsiz))
     
 if True:
-    mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*4))
+    mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*2))
+    mywalls.extend(genTriangleWalls(150, -50, 30, smsqsiz*2))
 else:
-    mywalls.append(Wall(50, 0, 50, 280))
-    mywalls.append(Wall(100, 300, 100, 20))
-    mywalls.append(Wall(150, 0, 150, 280))
-    mywalls.append(Wall(200, 300, 200, 20))
-    mywalls.append(Wall(250, 0, 250, 280))
+    # linear barriers
+    mywalls.append(LinearWall(50, 0, 50, 280))
+    mywalls.append(LinearWall(100, 300, 100, 20))
+    mywalls.append(LinearWall(150, 0, 150, 280))
+    mywalls.append(LinearWall(200, 300, 200, 20))
+    mywalls.append(LinearWall(250, 0, 250, 280))
     
 for w in mywalls:
     print(w)
@@ -289,7 +318,7 @@ t.pencolor("black")
 
 scr.title("Testing...")
 dbg = False
-for headTest in [82.24861134413653, 115, 80, 30, 160, 210, 260, 280, 340, 270, 0, 90,  180]:
+for headTest in range(0, 360, 8):
     t.setheading(headTest)
     dbgprint('Computing for %d' % headTest)
     pos = world.findIntersect(t.pos(), headTest)
@@ -334,13 +363,8 @@ while True:
     if False:
         newhead = random() * 360
     else:
-        # this only handles the horiz and vertical walls
-        # will generalize later
         wallHit = world.getWallHit()
-        if wallHit in mywalls[5:7]:
-            pass
-            
-        newhead = (2 * wallHit.ang - newhead) % 360
+        newhead = wallHit.reflectAngle(newhead, posx, posy)
         if randerr:
             newhead = newhead + (random()*5 - 2.5)
         # for next time, make sure we don't hit the same wall.
