@@ -6,8 +6,10 @@ from random import *
 import math
 from abc import ABC, abstractmethod
 global dbg
+dbg = False
 
 def dbgprint(*args):
+    global dbg
     if dbg:
         print(args)
     
@@ -30,7 +32,7 @@ class Wall(ABC):
         pass
 
     @abstractmethod
-    def getTurtleIntersection(self, x0, y0, mt):
+    def getTurtleIntersections(self, x0, y0, mt):
         pass
 
     @abstractmethod
@@ -38,7 +40,6 @@ class Wall(ABC):
         pass
     
 # the linear wall here is basically a line segment
-# later we should generalize to other shapes
 class LinearWall(Wall):
     def __init__(self, x1, y1, x2, y2):
         self.x1 = x1
@@ -91,7 +92,7 @@ class LinearWall(Wall):
     def reflectAngle(self, oldheading, xint, yint):
         return (2 * self.ang - newhead) % 360
     
-    # notes
+    # notes on linear wall intersections
     # call (y2-y1)/(x2-x1) = mw
 
     # wall equation is y=y1 + (x-x1)*mw
@@ -131,7 +132,7 @@ class LinearWall(Wall):
     # yint = x0 + mt*x-x0 = 0 + 1*225 = 150
 
     # special case if wall and turtle path are parallel
-    def getTurtleIntersection(self, x0, y0, mt):
+    def getTurtleIntersections(self, x0, y0, mt):
         xint = None
         yint = None
         if self.mw == mt:
@@ -155,13 +156,82 @@ class LinearWall(Wall):
                 xint = self.x1
             if self.y1 == self.y2:
                 yint = self.y1
+
         # now only return if wall really contains that point.
-        if self.containsPoint(xint, yint):
+        # Note that linear wall only returns at most one intersection
+        if xint is not None and self.containsPoint(xint, yint):
             dbgprint('wall does contain (%f, %f)' % (xint, yint))
-            return (xint, yint)
+            return [(xint, yint)]
         else:
-            return (None, None)
+            return [(None, None)]
     
+# the circular wall 
+class CircularWall(Wall):
+    def __init__(self, xcent, ycent, radius):
+        self.xcent = xcent
+        self.ycent = ycent
+        self.radius = radius
+
+    def __str__(self):
+        return('center at (%d,%d), radius %f' % (self.xcent, self.ycent, self.radius))
+
+    def draw(self, t):
+        t.penup()
+        t.goto(self.xcent, self.ycent - self.radius)
+        (x, y) = t.pos()
+        dbgprint('turtle at %f,%f' % (x, y))
+        t.pendown()
+        t.pencolor("red")
+        t.circle(self.radius)
+
+    def reflectAngle(self, oldheading, xint, yint):
+        return (oldheading+180) % 360
+    
+    # notes on circular wall intersections
+    # xc = xcent, yc = ycent
+    # wall equation is (x-xc)**2 + (y-yc)**2 = radius**2
+    # turt equation is y=y0 + (x-x0)*mt
+    # from web page http://www.ambrsoft.com/TrigoCalc/Circles2/circlrLine_.htm
+    # x1,2 = a + bm -dm +/- sqrt(w)
+    # y1,2 = d + am + bm**2 +/- m*sqrt(w)
+    # where: w = r**2(1+m**2) - (b - ma - d)**2
+
+    # if y = mx + d
+    # and y = y0 + (x-x0)*mt
+    # y = y0 + x*mt - x0*mt
+    # so d = y0 - x0*mt
+    
+    def getTurtleIntersections(self, x0, y0, mt):
+        xint = None
+        yint = None
+
+        if mt == math.inf:
+            # handle this later
+            return [(None, None)]
+        
+        # calculate w to see how many intersection points if any
+        d = y0 - x0*mt
+        w = self.radius**2 * (1 + mt**2) - (self.ycent - (mt * self.xcent) - d)**2
+        dbgprint('w=%f, mt=%f, x0/y0 at (%f, %f)' % (w, mt, x0, y0))
+        if w < 0:
+            dbgprint('no intersections')
+            return [(None, None)]
+        # w is >= 0
+        x1 = (self.xcent + self.ycent*mt - d*mt + math.sqrt(w)) / (1 + mt**2)
+        y1 = mt*x1 + d
+        # y1 = y0 + (x1 - x0) * mt
+        if w == 0:
+            dbgprint('one intersection (%f,%f)' %  (x1, y1))
+            return [(x1, y1)]
+        else:
+            x2 = (self.xcent + self.ycent*mt - d*mt - math.sqrt(w)) / (1 + mt**2)
+            y2 = mt*x2 + d
+            dbgprint('two intersections (%f,%f) and (%f,%f)' % (x1, y1, x2, y2))
+            # sys.exit()
+            return [(x1, y1), (x2, y2)]
+
+
+# some routines for generating sets of linear walls
 def genPolygonWalls(x0, y0, numsides, heading, sidelen, headingChange=None):
     a = []
     if headingChange is None:
@@ -206,26 +276,19 @@ class World:
             righty = yint < y0
         return (rightx and righty)
 
-    def hitsEarlier(self, xint, yint, angsin, angcos):
+    def hitsEarlier(self, xint, yint, x0, y0):
         if self.xret is None:
             return True
-        if angcos > 0:
-            return xint < self.xret
-        if angcos < 0:
-            return xint > self.xret
-        # zero cos, check sing
-        if angsin > 0:
-            return yint < self.yret
-        if angsin < 0:
-            return yint > self.yret
-        return False
+        intDist = math.sqrt((xint - x0)**2 + (yint - y0)**2)
+        dbgprint('intDist=%f, self.intDist=%f' % (intDist, self.intDist))
+        return (intDist < self.intDist)
         
     def isValidIntersection(self, wall, x0, y0, xint, yint, angsin, angcos):
         rightDirection = self.isRightDirection(x0, y0, xint, yint, angsin, angcos)
         dbgprint('rightDirection = %s' % rightDirection)
         if not rightDirection:
             return False
-        earlier = self.hitsEarlier(xint, yint, angsin, angcos)
+        earlier = self.hitsEarlier(xint, yint, x0, y0)
         dbgprint('hits Earlier = %s' % earlier)
         if not earlier:
             return False
@@ -234,7 +297,7 @@ class World:
     
     # find the intersection with any wall
     # given the current position and angle
-    def findIntersect(self, posOrig, angle, excludeWalls=[]):
+    def findIntersect(self, posOrig, angle, t, excludeWalls=[]):
         dbgprint("posOrig is ", posOrig)
         (x0, y0) = posOrig
 
@@ -260,16 +323,23 @@ class World:
             if wall in excludeWalls:
                 continue
             dbgprint('wall is %s' % (wall))
-            (xint, yint) = wall.getTurtleIntersection(x0, y0, mt)
-                    
-            # if we computed a wall turtle intersection, see if it is really on a wall
-            # and also whether it is in the right turtle direction, and is earlier than any existing one
-            if xint is not None:
-                dbgprint('computed intersection at (%f,%f)' % (xint, yint))
-                if self.isValidIntersection(wall, x0, y0, xint, yint, angsin, angcos):
-                    self.xret = xint
-                    self.yret = yint
-                    self.wallHit = wall
+            # getTurtleIntersection returns a list of intersections of turtle path with that wall
+            # for linear wall types that will only be one intersection.
+            for intersectPosition in  wall.getTurtleIntersections(x0, y0, mt):
+                (xint, yint) = intersectPosition
+                # if we computed a wall turtle intersection, see if it is really on a wall
+                # and also whether it is in the right turtle direction, and is earlier than any existing one
+                if xint is not None:
+                    if False:
+                        t.goto((xint, yint))
+                        t.stamp()
+                        # time.sleep(1)
+                    dbgprint('computed intersection at (%f,%f)' % (xint, yint))
+                    if self.isValidIntersection(wall, x0, y0, xint, yint, angsin, angcos):
+                        self.xret = xint
+                        self.yret = yint
+                        self.intDist = math.sqrt((xint - x0)**2 + (yint - y0)**2)
+                        self.wallHit = wall
                     
 
         # having finished all walls, xret,yret should conotain the first intersect
@@ -292,19 +362,24 @@ scr.colormode(255)
 mywalls = []
 sqsiz = 300
 smsqsiz = 50
-mywalls.extend(genSquareWalls(-100, 0, -30, sqsiz))
+
+mywalls.append(CircularWall(150, 225, 50))
+mywalls.extend(genSquareWalls(0, 0, 0, sqsiz))
     
+
 if True:
-    mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*2))
-    mywalls.extend(genTriangleWalls(150, -50, 30, smsqsiz*2))
-else:
-    # linear barriers
-    mywalls.append(LinearWall(50, 0, 50, 280))
-    mywalls.append(LinearWall(100, 300, 100, 20))
-    mywalls.append(LinearWall(150, 0, 150, 280))
-    mywalls.append(LinearWall(200, 300, 200, 20))
-    mywalls.append(LinearWall(250, 0, 250, 280))
-    
+    if True:
+        mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*2))
+        mywalls.extend(genTriangleWalls(200, 20, 30, smsqsiz*2))
+    else:
+        # linear barriers
+        mywalls.append(LinearWall(50, 0, 50, 280))
+        mywalls.append(LinearWall(100, 300, 100, 20))
+        mywalls.append(LinearWall(150, 0, 150, 280))
+        mywalls.append(LinearWall(200, 300, 200, 20))
+        mywalls.append(LinearWall(250, 0, 250, 280))
+
+
 for w in mywalls:
     print(w)
     
@@ -312,7 +387,8 @@ world = World(mywalls)
 world.draw(t)
 
 xStart = 25
-yStart = 25
+yStart = 50
+
 t.setpos(xStart, yStart)
 t.pencolor("black")
 
@@ -320,8 +396,9 @@ scr.title("Testing...")
 dbg = False
 for headTest in range(0, 360, 8):
     t.setheading(headTest)
+    dbg = False
     dbgprint('Computing for %d' % headTest)
-    pos = world.findIntersect(t.pos(), headTest)
+    pos = world.findIntersect(t.pos(), headTest, t)
     # dbgprint('for %d, pos is %s' % (headTest, pos))
     if True:
         t.pendown()
@@ -337,7 +414,6 @@ t.penup()
 world.draw(t)
 t.pencolor("black")
 t.goto(100, 50)
-# sys.exit()
 
 scr.title("Bouncing")
 dbg = False
@@ -349,7 +425,7 @@ t.speed(0)
 excludes = []
 while True:
     t.setheading(newhead)
-    pos = world.findIntersect(t.pos(), newhead, excludes)
+    pos = world.findIntersect(t.pos(), newhead, t, excludes)
     (posx, posy) = pos
     dbgprint(newhead, posx, posy)
     if posx == None:
