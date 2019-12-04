@@ -90,7 +90,7 @@ class LinearWall(Wall):
     # in the LinearWall class, reflectAngle does not use
     # xint, yint but other types of walls might.
     def reflectAngle(self, oldheading, xint, yint):
-        return (2 * self.ang - newhead) % 360
+        return (2 * self.ang - oldheading) % 360
     
     # notes on linear wall intersections
     # call (y2-y1)/(x2-x1) = mw
@@ -185,7 +185,17 @@ class CircularWall(Wall):
         t.circle(self.radius)
 
     def reflectAngle(self, oldheading, xint, yint):
-        return (oldheading+180) % 360
+        # get angle to center of circle
+        angcos = (self.xcent - xint) / self.radius
+        angsin = (self.ycent - yint) / self.radius
+        if angcos == 0:
+            angleFromCent = 90 if angsin > 0 else -90
+        else:
+            angleFromCent = math.degrees(math.atan(angsin/angcos))
+        dbgprint('angleFromCent = %f' % (angleFromCent))
+        angleTangToCirc = (angleFromCent + 90) % 360
+        return (2 * angleTangToCirc - oldheading) % 360
+
     
     # notes on circular wall intersections
     # xc = xcent, yc = ycent
