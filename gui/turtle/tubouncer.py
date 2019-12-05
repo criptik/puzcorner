@@ -178,8 +178,9 @@ class CircularWall(Wall):
     def draw(self, t):
         t.penup()
         t.goto(self.xcent, self.ycent - self.radius)
+        t.setheading(0)
         (x, y) = t.pos()
-        dbgprint('turtle at %f,%f' % (x, y))
+        # print('turtle at (%f,%f), heading=%f ' % (x, y, turtle.heading()))
         t.pendown()
         t.pencolor("red")
         t.circle(self.radius)
@@ -374,13 +375,14 @@ sqsiz = 300
 smsqsiz = 50
 
 mywalls.append(CircularWall(150, 225, 50))
-mywalls.extend(genSquareWalls(0, 0, 0, sqsiz))
+mywalls.append(CircularWall(55, 225, 40))
+mywalls.extend(genSquareWalls(0, 0, 10, sqsiz))
     
 
 if True:
     if True:
         mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*2))
-        mywalls.extend(genTriangleWalls(200, 20, 30, smsqsiz*2))
+        mywalls.extend(genTriangleWalls(195, 40, 30, smsqsiz*2))
     else:
         # linear barriers
         mywalls.append(LinearWall(50, 0, 50, 280))
@@ -419,7 +421,6 @@ for headTest in range(0, 360, 8):
 
 time.sleep(3)
 
-t.clear()
 t.penup()
 world.draw(t)
 t.pencolor("black")
