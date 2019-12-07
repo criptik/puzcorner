@@ -163,27 +163,46 @@ class LinearWall(Wall):
             dbgprint('wall does contain (%f, %f)' % (xint, yint))
             return [(xint, yint)]
         else:
-            return [(None, None)]
+            return []
     
 # the circular wall 
 class CircularWall(Wall):
-    def __init__(self, xcent, ycent, radius):
+    def __init__(self, xcent, ycent, radius, degstart=0, degend=360):
         self.xcent = xcent
         self.ycent = ycent
         self.radius = radius
+        self.degstart = degstart
+        self.degend = degend
+        self.degsize = (degend-degstart) % 360
+        if self.degsize == 0:
+            self.degsize = 360
 
     def __str__(self):
-        return('center at (%d,%d), radius %f' % (self.xcent, self.ycent, self.radius))
+        return('center at (%d,%d), radius %f, deg from %d-%d' % (self.xcent, self.ycent, self.radius, self.degstart, self.degend))
 
+    def containsPoint(self, x, y):
+        # shortcut for full circle, always true
+        if self.degsize == 360:
+            return True
+        # measure angle from intersection point to center
+        degint = math.degrees(math.atan2(x - self.xcent, y - self.ycent)) % 360
+        # atan2 degrees go clockwise, so different from turtle degrees
+        degint = (90 - degint) % 360
+        dbgprint('for (%f,%f), degint is %f' % (x, y, degint))
+        return self.degstart <= degint <= self.degend
+                              
     def draw(self, t):
         t.penup()
-        t.goto(self.xcent, self.ycent - self.radius)
-        t.setheading(0)
-        (x, y) = t.pos()
-        # print('turtle at (%f,%f), heading=%f ' % (x, y, turtle.heading()))
+        t.goto(self.xcent, self.ycent)
+        t.setheading(self.degstart)
+        t.forward(self.radius)
+        t.left(90)
+        if False:
+            (x, y) = t.pos()
+            print('turtle at (%f,%f), heading=%f ' % (x, y, turtle.heading()))
         t.pendown()
         t.pencolor("red")
-        t.circle(self.radius)
+        t.circle(self.radius, self.degsize)
 
     def reflectAngle(self, oldheading, xint, yint):
         # get angle to center of circle
@@ -215,10 +234,10 @@ class CircularWall(Wall):
     def getTurtleIntersections(self, x0, y0, mt):
         xint = None
         yint = None
-
+        a = []
         if mt == math.inf:
             # handle this later
-            return [(None, None)]
+            return a
         
         # calculate w to see how many intersection points if any
         d = y0 - x0*mt
@@ -226,21 +245,37 @@ class CircularWall(Wall):
         dbgprint('w=%f, mt=%f, x0/y0 at (%f, %f)' % (w, mt, x0, y0))
         if w < 0:
             dbgprint('no intersections')
-            return [(None, None)]
+            return a
         # w is >= 0
         x1 = (self.xcent + self.ycent*mt - d*mt + math.sqrt(w)) / (1 + mt**2)
         y1 = mt*x1 + d
         # y1 = y0 + (x1 - x0) * mt
+        if self.containsPoint(x1, y1):
+            pos1 = (x1, y1)
+            a.append(pos1)
         if w == 0:
-            dbgprint('one intersection (%f,%f)' %  (x1, y1))
-            return [(x1, y1)]
+            dbgprint('at most one intersection (%f,%f)' %  (x1, y1))
         else:
             x2 = (self.xcent + self.ycent*mt - d*mt - math.sqrt(w)) / (1 + mt**2)
             y2 = mt*x2 + d
-            dbgprint('two intersections (%f,%f) and (%f,%f)' % (x1, y1, x2, y2))
-            # sys.exit()
-            return [(x1, y1), (x2, y2)]
+            dbgprint('at most possibly two intersections (%f,%f) and (%f,%f)' % (x1, y1, x2, y2))
+            if self.containsPoint(x2, y2):
+                pos2 = (x2, y2)
+                a.append(pos2)
+        # sys.exit()
+        return a
 
+    def pointAtDegrees(self, deg):
+        x = self.xcent + math.cos(math.radians(deg)) * self.radius
+        y = self.ycent + math.sin(math.radians(deg)) * self.radius
+        return (x, y)
+        
+    def x1y1(self):
+        return self.pointAtDegrees(self.degstart)
+    
+    def x2y2(self):
+        return self.pointAtDegrees(self.degend)
+    
 
 # some routines for generating sets of linear walls
 def genPolygonWalls(x0, y0, numsides, heading, sidelen, headingChange=None):
@@ -250,7 +285,8 @@ def genPolygonWalls(x0, y0, numsides, heading, sidelen, headingChange=None):
     a.append(LinearWall.fromVector(x0, y0, heading, sidelen))
     for n in range(numsides-1):
         heading = heading + headingChange
-        a.append(LinearWall.fromVector(*(a[-1].x2y2()), heading, sidelen))
+        prevx, prevy = a[-1].x2y2()
+        a.append(LinearWall.fromVector(prevx, prevy, heading, sidelen))
 
     return a    
 
@@ -338,8 +374,8 @@ class World:
             # for linear wall types that will only be one intersection.
             for intersectPosition in  wall.getTurtleIntersections(x0, y0, mt):
                 (xint, yint) = intersectPosition
-                # if we computed a wall turtle intersection, see if it is really on a wall
-                # and also whether it is in the right turtle direction, and is earlier than any existing one
+                # if we computed a wall turtle intersection, see if it is in
+                # the right turtle direction, and is earlier than any existing one
                 if xint is not None:
                     if False:
                         t.goto((xint, yint))
@@ -374,7 +410,14 @@ mywalls = []
 sqsiz = 300
 smsqsiz = 50
 
-mywalls.append(CircularWall(150, 225, 50))
+# mywalls.append(CircularWall(150, 225, 50, 45, 135))
+mywalls.append(CircularWall(150, 225, 50, 180, 360))
+lastwall = mywalls[-1]
+# make a linear wall between endpoints
+(x1, y1) = lastwall.x1y1()
+(x2, y2) = lastwall.x2y2()
+mywalls.append(LinearWall(x1, y1, x2, y2))
+
 mywalls.append(CircularWall(55, 225, 40))
 mywalls.extend(genSquareWalls(0, 0, 10, sqsiz))
     
@@ -408,7 +451,6 @@ scr.title("Testing...")
 dbg = False
 for headTest in range(0, 360, 8):
     t.setheading(headTest)
-    dbg = False
     dbgprint('Computing for %d' % headTest)
     pos = world.findIntersect(t.pos(), headTest, t)
     # dbgprint('for %d, pos is %s' % (headTest, pos))
@@ -417,7 +459,9 @@ for headTest in range(0, 360, 8):
         t.goto(pos)
         t.penup()
     t.setpos(xStart, yStart)
-    # sys.exit()
+    if False:
+        time.sleep(5)
+        sys.exit()
 
 time.sleep(3)
 
