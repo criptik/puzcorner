@@ -398,98 +398,170 @@ class World:
     def getWallHit(self):
         return self.wallHit
 
+
+class TurtleRing:
+    def __init__(self, num, scr):
+        self.turtRing = []
+        self.ringIndex = 0
+        self.ringSize = num
+        for n in range(num):
+            self.createNewTurtle(scr)
+
+    def createNewTurtle(self, scr):
+        newt = turtle.RawTurtle(scr)
+        newt.speed(0)
+        newt.setundobuffer(1)
+        if True:
+            newt.shape('circle')
+            newt.resizemode('user')
+            newt.shapesize(0.25, 0.25)
+        self.turtRing.append(newt)
+        return newt
+
+    def getNextTurtle(self):
+        tnext = self.turtRing[self.ringIndex]
+        self.ringIndex = (self.ringIndex + 1) % self.ringSize
+        return tnext
+
+    def clearAll(self):
+        for t in self.turtRing:
+            while t.undobufferentries():
+                t.undo()
+            t.clear()
+            t.penup()
+            
+useUndo = True
+def undoDraw(tur):
+    if useUndo:
+        tur.undo()
+    else:
+        tur.clear()
+
 # ---------- main program ----------------
 scr = turtle.Screen()
-t = turtle.RawTurtle(scr) 
-t.shape('circle')
-t.resizemode('user')
-t.shapesize(0.5, 0.5)
-t.speed(0)
+tmain = turtle.RawTurtle(scr) 
+tmain.shape('circle')
+tmain.resizemode('user')
+tmain.shapesize(0.5, 0.5)
+tmain.speed(0)
 scr.colormode(255)
 mywalls = []
 sqsiz = 300
 smsqsiz = 50
 
-# mywalls.append(CircularWall(150, 225, 50, 45, 135))
-mywalls.append(CircularWall(150, 225, 50, 180, 360))
-lastwall = mywalls[-1]
-# make a linear wall between endpoints
-(x1, y1) = lastwall.x1y1()
-(x2, y2) = lastwall.x2y2()
-mywalls.append(LinearWall(x1, y1, x2, y2))
+if False:
+    mywalls.extend(genSquareWalls(0, 0, 0, sqsiz))
+else:
+    mywalls.extend(genSquareWalls(0, 0, 10, sqsiz))
+    mywalls.append(CircularWall(150, 235, 50, 0, 180))
+    lastwall = mywalls[-1]
+    # make a linear wall between endpoints
+    (x1, y1) = lastwall.x1y1()
+    (x2, y2) = lastwall.x2y2()
+    mywalls.append(LinearWall(x1, y1, x2, y2))
 
-mywalls.append(CircularWall(55, 225, 40))
-mywalls.extend(genSquareWalls(0, 0, 10, sqsiz))
+    mywalls.append(CircularWall(150, 225, 50, 180, 360))
+    lastwall = mywalls[-1]
+    # make a linear wall between endpoints
+    (x1, y1) = lastwall.x1y1()
+    (x2, y2) = lastwall.x2y2()
+    mywalls.append(LinearWall(x1, y1, x2, y2))
+
+    mywalls.append(CircularWall(55, 225, 40))
+    # mywalls.append(CircularWall(51, 222, 90, 90, 180))
+
+
+    if True:
+        if True:
+            mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*2))
+            mywalls.extend(genTriangleWalls(195, 40, 30, smsqsiz*2))
+        else:
+            # linear barriers
+            mywalls.append(LinearWall(50, 0, 50, 280))
+            mywalls.append(LinearWall(100, 300, 100, 20))
+            mywalls.append(LinearWall(150, 0, 150, 280))
+            mywalls.append(LinearWall(200, 300, 200, 20))
+            mywalls.append(LinearWall(250, 0, 250, 280))
+
+world = World(mywalls)
+if False:
+    for w in mywalls:
+        print(w)
     
+xTestStart = 25
+yTestStart = 50
+
+tmain.setpos(xTestStart, yTestStart)
+tmain.pencolor("black")
+turtRing = TurtleRing(4, scr)
 
 if True:
-    if True:
-        mywalls.extend(genTriangleWalls(100, 100, -30, smsqsiz*2))
-        mywalls.extend(genTriangleWalls(195, 40, 30, smsqsiz*2))
-    else:
-        # linear barriers
-        mywalls.append(LinearWall(50, 0, 50, 280))
-        mywalls.append(LinearWall(100, 300, 100, 20))
-        mywalls.append(LinearWall(150, 0, 150, 280))
-        mywalls.append(LinearWall(200, 300, 200, 20))
-        mywalls.append(LinearWall(250, 0, 250, 280))
+    scr.title("Testing...")
+    world.draw(tmain)
+    tmain.hideturtle()
+    dbg = False
+    for headTest in range(0, 360, 8):
+        tnext = turtRing.getNextTurtle()
+        tnext.penup()
+        tnext.setpos(xTestStart, yTestStart)
+        tnext.setheading(headTest)
+        dbgprint('Computing for %d' % headTest)
+        pos = world.findIntersect(tnext.pos(), headTest, tnext)
+        # dbgprint('for %d, pos is %s' % (headTest, pos))
+        if True:
+            tnext.pendown()
+            tnext.goto(pos)
+            tnext.penup()
+        if False:
+            time.sleep(5)
+            sys.exit()
 
-
-for w in mywalls:
-    print(w)
+    time.sleep(3)
+    # sys.exit()
     
-world = World(mywalls)
-world.draw(t)
+turtRing.clearAll()
+tmain.penup()
+world.draw(tmain)
+tmain.hideturtle()
+tmain.pencolor("black")
 
-xStart = 25
-yStart = 50
-
-t.setpos(xStart, yStart)
-t.pencolor("black")
-
-scr.title("Testing...")
-dbg = False
-for headTest in range(0, 360, 8):
-    t.setheading(headTest)
-    dbgprint('Computing for %d' % headTest)
-    pos = world.findIntersect(t.pos(), headTest, t)
-    # dbgprint('for %d, pos is %s' % (headTest, pos))
-    if True:
-        t.pendown()
-        t.goto(pos)
-        t.penup()
-    t.setpos(xStart, yStart)
-    if False:
-        time.sleep(5)
-        sys.exit()
-
-time.sleep(3)
-
-t.penup()
-world.draw(t)
-t.pencolor("black")
-t.goto(100, 50)
 
 scr.title("Bouncing")
 dbg = False
-newhead = random() * 90
-randerr = True
+xBounceStart = 100
+yBounceStart = 50
 if True:
-    t.pendown()
-t.speed(0)
+    newhead = random() * 90
+else:
+    newhead = 45
+randerr = True
+
 excludes = []
+tlast = None
+count = 0
 while True:
-    t.setheading(newhead)
-    pos = world.findIntersect(t.pos(), newhead, t, excludes)
+    ta = turtRing.getNextTurtle()
+    # ta = t
+    undoDraw(ta)
+    ta.penup()
+    if tlast is None:
+        ta.goto(xBounceStart, yBounceStart)
+    else:
+        (lastx, lasty) = tlast.pos()
+        ta.goto(lastx, lasty)
+    ta.setheading(newhead)
+    pos = world.findIntersect(ta.pos(), newhead, ta, excludes)
     (posx, posy) = pos
     dbgprint(newhead, posx, posy)
     if posx == None:
-        print(t.pos(), newhead, excludes, pos)
+        print(ta.pos(), newhead, excludes, pos)
         time.sleep(10)
         sys.exit()
         continue
-    t.goto(pos)
-    # t.dot(5, "blue")
+    ta.pendown()
+    ta.goto(pos)
+    # ta.dot(5, "blue")
+    tlast = ta
     
     if False:
         newhead = random() * 360
@@ -500,6 +572,12 @@ while True:
             newhead = newhead + (random()*5 - 2.5)
         # for next time, make sure we don't hit the same wall.
         excludes = [wallHit]
+    if False:
+        time.sleep(2)
+    if False:
+        count = count + 1
+        if count == 1000:
+            break
             
 turtle.done()
 
