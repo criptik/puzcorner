@@ -404,7 +404,13 @@ class TurtleRing:
         self.turtRing = []
         self.ringIndex = 0
         self.ringSize = num
-        for n in range(num):
+        self.useUndo = True
+        self.noErase = False
+        # num == 0 is a special no-erase situation
+        if num == 0:
+            self.noErase = True
+            self.ringSize = 1
+        for n in range(self.ringSize):
             self.createNewTurtle(scr)
 
     def createNewTurtle(self, scr):
@@ -430,12 +436,13 @@ class TurtleRing:
             t.clear()
             t.penup()
             
-useUndo = True
-def undoDraw(tur):
-    if useUndo:
-        tur.undo()
-    else:
-        tur.clear()
+    def undoDraw(self, tur):
+        if self.noErase:
+            return
+        if self.useUndo:
+            tur.undo()
+        else:
+            tur.clear()
 
 # ---------- main program ----------------
 scr = turtle.Screen()
@@ -493,7 +500,7 @@ yTestStart = 50
 
 tmain.setpos(xTestStart, yTestStart)
 tmain.pencolor("black")
-turtRing = TurtleRing(4, scr)
+turtRing = TurtleRing(0, scr)
 
 if True:
     scr.title("Testing...")
@@ -528,8 +535,8 @@ tmain.pencolor("black")
 
 scr.title("Bouncing")
 dbg = False
-xBounceStart = 100
-yBounceStart = 50
+xBounceStart = 150
+yBounceStart = 150
 if True:
     newhead = random() * 90
 else:
@@ -542,7 +549,7 @@ count = 0
 while True:
     ta = turtRing.getNextTurtle()
     # ta = t
-    undoDraw(ta)
+    turtRing.undoDraw(ta)
     ta.penup()
     if tlast is None:
         ta.goto(xBounceStart, yBounceStart)
