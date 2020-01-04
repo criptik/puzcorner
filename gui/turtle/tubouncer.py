@@ -500,7 +500,7 @@ yTestStart = 50
 
 tmain.setpos(xTestStart, yTestStart)
 tmain.pencolor("black")
-turtRing = TurtleRing(0, scr)
+turtRing = TurtleRing(5, scr)
 
 if True:
     scr.title("Testing...")
