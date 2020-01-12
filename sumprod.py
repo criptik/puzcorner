@@ -22,6 +22,19 @@ class SearchBase(ABC):
     def getTries(self):
         return self.tries
 
+    def n1TooSmall(self, n1, num):
+        # if n1 is too small to reach goal, skip
+        # would be nice if there was an easy way to compute this "n1bot"
+        # print(num, n1)
+        left = (self.goal/n1) ** (1/3)
+        right = (num-n1)/3
+        return left > right
+
+    def n1FindTop(self, num):
+        n1topa = int(self.goal**0.25) + 1
+        n1topb = int(self.goal/4) + 1
+        return min(n1topa, n1topb)
+        
     @abstractmethod
     def search(self, num):
         pass
@@ -29,9 +42,11 @@ class SearchBase(ABC):
 class SumFirst(SearchBase):
     def search(self, num):
         self.initSearch(num)
-        n1top = int(self.goal**0.25) + 1
+        n1top = self.n1FindTop(num)
         for n1 in range(1, n1top):
             # print('.', end='')
+            if self.n1TooSmall(n1, num):
+                continue
             if self.goal % n1 != 0:
                 continue
             if shown1:
@@ -61,9 +76,11 @@ class SumFirst(SearchBase):
 class ProdFirst(SearchBase):
     def search(self, num):
         self.initSearch(num)
-        n1top = int(self.goal/4) + 1
         # print(num, n1top)
+        n1top = self.n1FindTop(num)
         for n1 in range(1, n1top):
+            if self.n1TooSmall(n1, num):
+                continue
             if self.goal % n1 != 0:
                 continue
             if n1 >= num/4 + 1:
@@ -99,7 +116,7 @@ class ProdFirst(SearchBase):
 # searcher = SumFirst()
 numlo = int(sys.argv[1]) if len(sys.argv) >= 2 else 710
 numhi = int(sys.argv[2]) if len(sys.argv) >= 3 else 712
-searcher = SumFirst() if len(sys.argv) >= 4 else ProdFirst() 
+searcher = SumFirst() if len(sys.argv) < 4 else ProdFirst() 
 print('%s search' % (searcher.__class__.__name__))
 
 totalFinds = 0
@@ -127,8 +144,9 @@ for num in range (numlo, numhi):
             
 print('TotalTries = %d on %d numbers' % (totTries, numhi-numlo))
 print('%d total finds on %d numbers' % (totalFinds, nonzNums))
-print('Max Finds = %d on ' % (maxFinds),
-      '[', ''.join('%.2f, ' % (k) for k in maxFindsList), ']')
+if maxFinds > 0:
+    print('Max Finds = %d on ' % (maxFinds),
+          '[', ''.join('%.2f, ' % (k) for k in maxFindsList), ']')
 
 
 
