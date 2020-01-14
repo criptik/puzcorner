@@ -46,29 +46,31 @@ class SearchBase(ABC):
         n1topb = int(self.goal/4) + 1
         return min(n1topa, n1topb)
 
-    def findn3n4(self, n2, n3n4sum, n3n4prod):
+    def findLastTwo(self, prev, last2sum, last2prod):
         if True:
+            # this solves directly for the last two vals
             self.tries = self.tries + 1
-            rootterm = n3n4sum**2 - 4*n3n4prod
+            rootterm = last2sum**2 - 4*last2prod
             # if rootterm not valid, choose a different n2
             if rootterm < 0:
                 return None
-            sol = (n3n4sum - math.sqrt(rootterm)) / 2
+            sol = (last2sum - math.sqrt(rootterm)) / 2
             if sol != int(sol):
                 return None
-            if sol >= n2:
+            # must not be less than previous value
+            if sol >= prev:
                 return sol
         else:
-            # old slower n3_search way kept around for no good reason
-            rootprod = math.sqrt(n3n4prod)
-            for n3 in range(n2, int(rootprod) + 1):
-                if n3 > int(n3n4sum/2) + 1:
+            # old slower search way kept around for no good reason
+            rootprod = math.sqrt(last2prod)
+            for n3 in range(prev, int(rootprod) + 1):
+                if n3 > int(last2sum/2) + 1:
                     return None
                 self.tries = self.tries + 1
-                if n3n4prod % n3 != 0:
+                if last2prod % n3 != 0:
                     continue
-                n4 = n3n4prod // n3
-                if n3 + n4 == n3n4sum:
+                n4 = last2prod // n3
+                if n3 + n4 == last2sum:
                     return n3
 
         
@@ -94,7 +96,7 @@ class SumFirst(SearchBase):
                     continue
                 n3n4sum = num - (n1 + n2)
                 n3n4prod = self.goal // (n1 * n2)
-                n3 = self.findn3n4(n2, n3n4sum, n3n4prod)
+                n3 = self.findLastTwo(n2, n3n4sum, n3n4prod)
                 if n3 is not None:
                     n4 = n3n4sum - n3
                     self.addSolution(n1, n2, n3, n4)
@@ -127,7 +129,7 @@ class ProdFirst(SearchBase):
                     break
                 n3n4prod = n2goal // n2
                 n3n4sum = num - (n1 + n2)
-                n3 = self.findn3n4(n2, n3n4sum, n3n4prod)
+                n3 = self.findLastTwo(n2, n3n4sum, n3n4prod)
                 if n3 is not None:
                     n4 = n3n4sum - n3
                     self.addSolution(n1, n2, n3, n4)
@@ -155,9 +157,21 @@ for num in range (args.range[0], args.range[1]):
     totTries = totTries + tries
     finds = 0
     for sol in sols:
-        print ('... %.2f: %.2f %.2f %.2f %.2f' % (num/100, sol[0], sol[1], sol[2], sol[3]))
         finds = finds + 1
-
+        noPennies = True
+        billsOnly = True
+        for n in range(4):
+            cents = sol[n] * 100
+            if cents % 10 != 0:
+                noPennies = False
+                billsOnly = False
+                break
+            elif cents % 100 != 0:
+                billsOnly = False
+                
+        print ('... %.2f: %.2f %.2f %.2f %.2f   %s' %
+               (num/100, sol[0], sol[1], sol[2], sol[3], '!!!!!!' if billsOnly else '!!!' if  noPennies else ''))
+        
     if finds > 0:
         print('          %d find%s after %d tries' % (finds, 's' if finds > 1 else '', tries) )
         totalFinds = totalFinds + finds
