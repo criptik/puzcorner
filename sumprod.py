@@ -2,12 +2,23 @@ import sys
 import math
 from functools import reduce
 from abc import ABC, abstractmethod
+import argparse
 
 shown1 = False
+debug = False
+global args
 
 def lowfactors(n):    
     return set(reduce(list.__add__, 
                 ([i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Puzzle Corner 4-item Sum = Prod')
+
+    parser.add_argument('--range', type=int, nargs='+', default=[711], help='range of values to test')
+    parser.add_argument('--prod-first', default=False, action='store_true', help='true to use ProdFirst search') 
+    parser.add_argument('--debug', default=False, action='store_true', help='print some debug info') 
+    return parser.parse_args()
 
 class SearchBase(ABC):
     def initSearch(self, num):
@@ -34,6 +45,32 @@ class SearchBase(ABC):
         n1topa = int(self.goal**0.25) + 1
         n1topb = int(self.goal/4) + 1
         return min(n1topa, n1topb)
+
+    def findn3n4(self, n2, n3n4sum, n3n4prod):
+        if True:
+            self.tries = self.tries + 1
+            rootterm = n3n4sum**2 - 4*n3n4prod
+            # if rootterm not valid, choose a different n2
+            if rootterm < 0:
+                return None
+            sol = (n3n4sum - math.sqrt(rootterm)) / 2
+            if sol != int(sol):
+                return None
+            if sol >= n2:
+                return sol
+        else:
+            # old slower n3_search way kept around for no good reason
+            rootprod = math.sqrt(n3n4prod)
+            for n3 in range(n2, int(rootprod) + 1):
+                if n3 > int(n3n4sum/2) + 1:
+                    return None
+                self.tries = self.tries + 1
+                if n3n4prod % n3 != 0:
+                    continue
+                n4 = n3n4prod // n3
+                if n3 + n4 == n3n4sum:
+                    return n3
+
         
     @abstractmethod
     def search(self, num):
@@ -49,25 +86,18 @@ class SumFirst(SearchBase):
                 continue
             if self.goal % n1 != 0:
                 continue
-            if shown1:
-                print(n1)
+            if args.debug:
+                print(n1, end=' ')
             n2top = int((self.goal/n1)**0.333) + 1
             for n2 in range(n1, n2top):
                 if self.goal % (n1 * n2) != 0:
                     continue
                 n3n4sum = num - (n1 + n2)
                 n3n4prod = self.goal // (n1 * n2)
-                rootprod = math.sqrt(n3n4prod)
-                for n3 in range(n2, int(rootprod) + 1):
-                    if n3 > int(n3n4sum/2) + 1:
-                        break
-                    self.tries = self.tries + 1
-                    if n3n4prod % n3 != 0:
-                        continue
-                    n4 = n3n4prod // n3
-                    if n3 + n4 == n3n4sum:
-                        self.addSolution(n1, n2, n3, n4)
-                        break
+                n3 = self.findn3n4(n2, n3n4sum, n3n4prod)
+                if n3 is not None:
+                    n4 = n3n4sum - n3
+                    self.addSolution(n1, n2, n3, n4)
                     
         # finished search, return solutions if any
         return self.solutions        
@@ -77,6 +107,7 @@ class ProdFirst(SearchBase):
     def search(self, num):
         self.initSearch(num)
         # print(num, n1top)
+        
         n1top = self.n1FindTop(num)
         for n1 in range(1, n1top):
             if self.n1TooSmall(n1, num):
@@ -85,8 +116,8 @@ class ProdFirst(SearchBase):
                 continue
             if n1 >= num/4 + 1:
                 break
-            if shown1:
-                print(n1)
+            if args.debug:
+                print(n1, end=' ')
             n2goal = self.goal // n1
             n2top = int(n2goal/3) + 1
             for n2 in range(n1, n2top):
@@ -94,37 +125,32 @@ class ProdFirst(SearchBase):
                     continue
                 if n1+n2 >= num:
                     break
-                n3goal = n2goal // n2
+                n3n4prod = n2goal // n2
                 n3n4sum = num - (n1 + n2)
-                n3top = int(n3goal/2) + 1
-                for n3 in range(n2, n3top):
-                    if n3 > int(n3n4sum/2) + 1:
-                        break
-                    self.tries = self.tries + 1
-                    if n3goal % n3 != 0:
-                        continue
-                    n4 = n3goal // n3
-                    if n1+n2+n3 >= num:
-                        break
-                    if n3 + n4 == n3n4sum:
-                        self.addSolution(n1, n2, n3, n4)
-                        break
-
+                n3 = self.findn3n4(n2, n3n4sum, n3n4prod)
+                if n3 is not None:
+                    n4 = n3n4sum - n3
+                    self.addSolution(n1, n2, n3, n4)
+                            
         # finished search, return solutions if any
         return self.solutions        
 
-# searcher = SumFirst()
-numlo = int(sys.argv[1]) if len(sys.argv) >= 2 else 710
-numhi = int(sys.argv[2]) if len(sys.argv) >= 3 else 712
-searcher = SumFirst() if len(sys.argv) < 4 else ProdFirst() 
-print('%s search' % (searcher.__class__.__name__))
+args = parse_args()
+if len(args.range) == 1:
+    args.range.append(args.range[0] + 1)
+searcher = ProdFirst() if (args.prod_first) else SumFirst()
+print('%s search on range %s' % (searcher.__class__.__name__, args.range))
 
 totalFinds = 0
 nonzNums = 0
 maxFinds = 0
 totTries = 0
-for num in range (numlo, numhi):
+for num in range (args.range[0], args.range[1]):
+    if args.debug:
+        print('search num = %d' %(num))
     sols = searcher.search(num)
+    if args.debug:
+        print()
     tries = searcher.getTries()
     totTries = totTries + tries
     finds = 0
@@ -142,7 +168,7 @@ for num in range (numlo, numhi):
         elif finds == maxFinds:
             maxFindsList.append(num/100)
             
-print('TotalTries = %d on %d numbers' % (totTries, numhi-numlo))
+print('TotalTries = %d on %d numbers' % (totTries, args.range[1] - args.range[0]))
 print('%d total finds on %d numbers' % (totalFinds, nonzNums))
 if maxFinds > 0:
     print('Max Finds = %d on ' % (maxFinds),
