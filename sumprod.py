@@ -16,34 +16,43 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Puzzle Corner 4-item Sum = Prod')
 
     parser.add_argument('--range', type=int, nargs='+', default=[711], help='range of values to test')
+    parser.add_argument('--count', type=int, default=4, help='number of items in search')
     parser.add_argument('--prod-first', default=False, action='store_true', help='true to use ProdFirst search') 
     parser.add_argument('--debug', default=False, action='store_true', help='print some debug info') 
     return parser.parse_args()
 
 class SearchBase(ABC):
-    def initSearch(self, num):
+    def initSearch(self, num, itemCount):
         self.tries = 0
         self.solutions = []
-        self.goal = num * 1000000
+        self.num = num
+        self.goal = num * 100**(itemCount - 1)
+        self.itemCount = itemCount
+        self.vals = [None] * (itemCount+1)
         
-    def addSolution(self, n1, n2, n3, n4):
-        self.solutions.append([n1/100, n2/100, n3/100, n4/100])
-        # print(self.solutions)
+    def addSolution(self):
+        if args.debug:
+            print('adding solution %s' % self.vals)
+        solvals = []
+        for val in self.vals:
+            if val is not None:
+                solvals.append(val/100)
+        self.solutions.append(solvals)
         
     def getTries(self):
         return self.tries
 
-    def n1TooSmall(self, n1, num):
+    def n1TooSmall(self, n1):
         # if n1 is too small to reach goal, skip
         # would be nice if there was an easy way to compute this "n1bot"
         # print(num, n1)
-        left = (self.goal/n1) ** (1/3)
-        right = (num-n1)/3
+        left = (self.goal/n1) ** (1/(self.itemCount - 1))
+        right = (self.num-n1)/(self.itemCount - 1)
         return left > right
 
-    def n1FindTop(self, num):
-        n1topa = int(self.goal**0.25) + 1
-        n1topb = int(self.goal/4) + 1
+    def n1FindTop(self):
+        n1topa = int(self.goal**(1/self.itemCount)) + 1
+        n1topb = int(self.goal/self.itemCount) + 1
         return min(n1topa, n1topb)
 
     def findLastTwo(self, prev, last2sum, last2prod):
@@ -75,44 +84,53 @@ class SearchBase(ABC):
 
         
     @abstractmethod
-    def search(self, num):
+    def search(self, num, itemCount):
         pass
     
 class SumFirst(SearchBase):
-    def search(self, num):
-        self.initSearch(num)
-        n1top = self.n1FindTop(num)
-        for n1 in range(1, n1top):
-            # print('.', end='')
-            if self.n1TooSmall(n1, num):
-                continue
-            if self.goal % n1 != 0:
-                continue
-            if args.debug:
-                print(n1, end=' ')
-            n2top = int((self.goal/n1)**0.333) + 1
-            for n2 in range(n1, n2top):
-                if self.goal % (n1 * n2) != 0:
+    def nextItemCost(self, itemIndex, start, end, sum, prod):
+        # if only two left, find them and return
+        if (itemIndex == self.itemCount - 1):
+            penult = self.findLastTwo(start, sum, prod)
+            if penult is not None:
+                ult = sum - penult
+                self.vals[itemIndex] = penult
+                self.vals[itemIndex+1] = ult
+                self.addSolution()
+        else:
+            # else not a lastTwo case, check and recurse
+            for val in range(start, end):
+                # print('.', end='')
+                if itemIndex == 1 and self.n1TooSmall(val):
+                        continue
+                if prod % val != 0:
                     continue
-                n3n4sum = num - (n1 + n2)
-                n3n4prod = self.goal // (n1 * n2)
-                n3 = self.findLastTwo(n2, n3n4sum, n3n4prod)
-                if n3 is not None:
-                    n4 = n3n4sum - n3
-                    self.addSolution(n1, n2, n3, n4)
+                if args.debug:
+                    print('itemIndex=%d, sum=%d, prod=%d, val=%d, vals=%s' % (itemIndex, sum, prod, val, self.vals))
+                self.vals[itemIndex] = val
+                nexttop = int((prod // val)**(1/(self.itemCount - itemIndex))) + 1
+                self.nextItemCost(itemIndex+1, val, nexttop, sum - val, prod//val)
+                
+            
+    def search(self, num, itemCount):
+        self.initSearch(num, itemCount)
+        n1top = self.n1FindTop()
+        self.nextItemCost(1, 1, n1top, self.num, self.goal)
                     
         # finished search, return solutions if any
         return self.solutions        
 
 
 class ProdFirst(SearchBase):
-    def search(self, num):
-        self.initSearch(num)
+    def search(self, num, itemCount):
+        print('ProdFirst not currently supported')
+        sys.exit()
+        self.initSearch(num, itemCount)
         # print(num, n1top)
         
-        n1top = self.n1FindTop(num)
+        n1top = self.n1FindTop()
         for n1 in range(1, n1top):
-            if self.n1TooSmall(n1, num):
+            if self.n1TooSmall(n1):
                 continue
             if self.goal % n1 != 0:
                 continue
@@ -141,18 +159,15 @@ args = parse_args()
 if len(args.range) == 1:
     args.range.append(args.range[0] + 1)
 searcher = ProdFirst() if (args.prod_first) else SumFirst()
-print('%s search on range %s' % (searcher.__class__.__name__, args.range))
+print('%s search for %d items on range %s' % (searcher.__class__.__name__, args.count, args.range))
 
 totalFinds = 0
 nonzNums = 0
 maxFinds = 0
 totTries = 0
+itemCount = args.count
 for num in range (args.range[0], args.range[1]):
-    if args.debug:
-        print('search num = %d' %(num))
-    sols = searcher.search(num)
-    if args.debug:
-        print()
+    sols = searcher.search(num, itemCount)
     tries = searcher.getTries()
     totTries = totTries + tries
     finds = 0
@@ -160,7 +175,7 @@ for num in range (args.range[0], args.range[1]):
         finds = finds + 1
         noPennies = True
         billsOnly = True
-        for n in range(4):
+        for n in range(itemCount):
             cents = sol[n] * 100
             if cents % 10 != 0:
                 noPennies = False
@@ -169,8 +184,8 @@ for num in range (args.range[0], args.range[1]):
             elif cents % 100 != 0:
                 billsOnly = False
                 
-        print ('... %.2f: %.2f %.2f %.2f %.2f   %s' %
-               (num/100, sol[0], sol[1], sol[2], sol[3], '!!!!!!' if billsOnly else '!!!' if  noPennies else ''))
+        print ('... %.2f: %s   %s' %
+               (num/100, ''.join('%.2f ' % (k) for k in sol), '!!!!!!' if billsOnly else '!!!' if  noPennies else ''))
         
     if finds > 0:
         print('          %d find%s after %d tries' % (finds, 's' if finds > 1 else '', tries) )
@@ -186,7 +201,7 @@ print('TotalTries = %d on %d numbers' % (totTries, args.range[1] - args.range[0]
 print('%d total finds on %d numbers' % (totalFinds, nonzNums))
 if maxFinds > 0:
     print('Max Finds = %d on ' % (maxFinds),
-          '[', ''.join('%.2f, ' % (k) for k in maxFindsList), ']')
+          '[%s]' % ''.join('%.2f, ' % (k) for k in maxFindsList))
 
 
 
