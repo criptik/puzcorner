@@ -2,6 +2,15 @@ import sys
 import math
 import argparse
 
+# From this problem in 2019 J/A
+# Stephen R. Shalom has a large family and strange (to me)
+# greeting customs. He reports that 18 members of his extended
+# family (none of whose age is over 100) came to visit. They arrived
+# two at a time. Their ages consisted of 18 different integers. As
+# each pair arrived he computed the difference of the squares
+# of their ages and, interestingly, got the same result every time.
+# What were the 18 ages?
+
 class DiffInfo(object):
     def __init__(self):
         self.ary = []

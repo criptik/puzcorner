@@ -1,23 +1,26 @@
 import sys
 import math
-from functools import reduce
 from abc import ABC, abstractmethod
 import argparse
+
+# From this problem in 2020 J/F
+#
+# Richard Thornton sometimes overpays, since he occasionally
+# multiplies the costs of individual items instead of summing
+# them. (We assume all items cost a positive integral multiple of
+# cents.) One time, he purchased four items whose total cost is $7.11,
+# but he was lucky since the product was also $7.11. What did the
+# individual items cost?
+
 
 shown1 = False
 debug = False
 global args
 
-def lowfactors(n):    
-    return set(reduce(list.__add__, 
-                ([i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Puzzle Corner 4-item Sum = Prod')
-
     parser.add_argument('--range', type=int, nargs='+', default=[711], help='range of values to test')
     parser.add_argument('--count', type=int, default=4, help='number of items in search')
-    parser.add_argument('--prod-first', default=False, action='store_true', help='true to use ProdFirst search') 
     parser.add_argument('--debug', default=False, action='store_true', help='print some debug info') 
     return parser.parse_args()
 
@@ -121,44 +124,11 @@ class SumFirst(SearchBase):
         return self.solutions        
 
 
-class ProdFirst(SearchBase):
-    def search(self, num, itemCount):
-        print('ProdFirst not currently supported')
-        sys.exit()
-        self.initSearch(num, itemCount)
-        # print(num, n1top)
-        
-        n1top = self.n1FindTop()
-        for n1 in range(1, n1top):
-            if self.n1TooSmall(n1):
-                continue
-            if self.goal % n1 != 0:
-                continue
-            if n1 >= num/4 + 1:
-                break
-            if args.debug:
-                print(n1, end=' ')
-            n2goal = self.goal // n1
-            n2top = int(n2goal/3) + 1
-            for n2 in range(n1, n2top):
-                if n2goal % n2 != 0:
-                    continue
-                if n1+n2 >= num:
-                    break
-                n3n4prod = n2goal // n2
-                n3n4sum = num - (n1 + n2)
-                n3 = self.findLastTwo(n2, n3n4sum, n3n4prod)
-                if n3 is not None:
-                    n4 = n3n4sum - n3
-                    self.addSolution(n1, n2, n3, n4)
-                            
-        # finished search, return solutions if any
-        return self.solutions        
 
 args = parse_args()
 if len(args.range) == 1:
     args.range.append(args.range[0] + 1)
-searcher = ProdFirst() if (args.prod_first) else SumFirst()
+searcher = SumFirst()
 print('%s search for %d items on range %s' % (searcher.__class__.__name__, args.count, args.range))
 
 totalFinds = 0
