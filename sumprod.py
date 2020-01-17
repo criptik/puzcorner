@@ -13,14 +13,12 @@ import argparse
 # individual items cost?
 
 
-shown1 = False
-debug = False
 global args
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Puzzle Corner 4-item Sum = Prod')
-    parser.add_argument('--range', type=int, nargs='+', default=[711], help='range of values to test')
-    parser.add_argument('--count', type=int, default=4, help='number of items in search')
+    parser.add_argument('--totals', type=int, nargs='+', default=[711], help='range of values to test (in whole cents)')
+    parser.add_argument('--items', type=int, nargs='+', default=[4], help='range of number of items in search')
     parser.add_argument('--debug', default=False, action='store_true', help='print some debug info') 
     return parser.parse_args()
 
@@ -31,7 +29,7 @@ class SearchBase(ABC):
         self.num = num
         self.goal = num * 100**(itemCount - 1)
         self.itemCount = itemCount
-        self.vals = [None] * (itemCount+1)
+        self.vals = [None] * (itemCount)
         
     def addSolution(self):
         if args.debug:
@@ -97,8 +95,8 @@ class SumFirst(SearchBase):
             penult = self.findLastTwo(start, sum, prod)
             if penult is not None:
                 ult = sum - penult
-                self.vals[itemIndex] = penult
-                self.vals[itemIndex+1] = ult
+                self.vals[itemIndex-1] = penult
+                self.vals[itemIndex] = ult
                 self.addSolution()
         else:
             # else not a lastTwo case, check and recurse
@@ -110,7 +108,7 @@ class SumFirst(SearchBase):
                     continue
                 if args.debug:
                     print('itemIndex=%d, sum=%d, prod=%d, val=%d, vals=%s' % (itemIndex, sum, prod, val, self.vals))
-                self.vals[itemIndex] = val
+                self.vals[itemIndex-1] = val
                 nexttop = int((prod // val)**(1/(self.itemCount - itemIndex))) + 1
                 self.nextItemCost(itemIndex+1, val, nexttop, sum - val, prod//val)
                 
@@ -126,52 +124,56 @@ class SumFirst(SearchBase):
 
 
 args = parse_args()
-if len(args.range) == 1:
-    args.range.append(args.range[0] + 1)
+numlo = args.totals[0]
+numhi = numlo + 1 if len(args.totals) == 1 else args.totals[1]+1
+itemslo = args.items[0]
+itemshi = itemslo + 1 if len(args.items) == 1 else args.items[1]+1
 searcher = SumFirst()
-print('%s search for %d items on range %s' % (searcher.__class__.__name__, args.count, args.range))
+print('%s search for %s items on range %s' % (searcher.__class__.__name__, args.items, args.totals))
 
 totalFinds = 0
 nonzNums = 0
 maxFinds = 0
 totTries = 0
-itemCount = args.count
-for num in range (args.range[0], args.range[1]):
-    sols = searcher.search(num, itemCount)
-    tries = searcher.getTries()
-    totTries = totTries + tries
-    finds = 0
-    for sol in sols:
-        finds = finds + 1
-        noPennies = True
-        billsOnly = True
-        for n in range(itemCount):
-            cents = sol[n] * 100
-            if cents % 10 != 0:
-                noPennies = False
-                billsOnly = False
-                break
-            elif cents % 100 != 0:
-                billsOnly = False
-                
-        print ('... %.2f: %s   %s' %
-               (num/100, ''.join('%.2f ' % (k) for k in sol), '!!!!!!' if billsOnly else '!!!' if  noPennies else ''))
+for num in range (numlo, numhi):
+    for itemCount in range (itemslo, itemshi):
+        sols = searcher.search(num, itemCount)
+        tries = searcher.getTries()
+        totTries = totTries + tries
+        finds = 0
+        for sol in sols:
+            finds = finds + 1
+            noPennies = True
+            billsOnly = True
+            for n in range(itemCount):
+                cents = sol[n] * 100
+                if cents % 10 != 0:
+                    noPennies = False
+                    billsOnly = False
+                    break
+                elif cents % 100 != 0:
+                    billsOnly = False
+
+            print ('(%d)... %.2f: %s   %s' %
+                   (itemCount, num/100,
+                    ''.join('%.2f ' % (k) for k in sol), '!!!!!!' if billsOnly else '!!!' if  noPennies else ''))
         
-    if finds > 0:
-        print('          %d find%s after %d tries' % (finds, 's' if finds > 1 else '', tries) )
-        totalFinds = totalFinds + finds
-        nonzNums = nonzNums + 1
-        if finds > maxFinds:
-            maxFinds = finds
-            maxFindsList = [num/100]
-        elif finds == maxFinds:
-            maxFindsList.append(num/100)
+        if finds > 0:
+            print('          %d find%s after %d tries' % (finds, 's' if finds > 1 else '', tries) )
+            totalFinds = totalFinds + finds
+            nonzNums = nonzNums + 1
+            if finds > maxFinds:
+                maxFinds = finds
+                maxFindsList = [(num/100, itemCount)]
+            elif finds == maxFinds:
+                maxFindsList.append((num/100, itemCount))
             
-print('TotalTries = %d on %d numbers' % (totTries, args.range[1] - args.range[0]))
-print('%d total finds on %d numbers' % (totalFinds, nonzNums))
+print('TotalTries = %d on %d numbers' % (totTries, numhi - numlo))
+print('%d total finds on %d number/count combos' % (totalFinds, nonzNums))
+# print(maxFindsList)
 if maxFinds > 0:
-    print('Max Finds = %d on ' % (maxFinds),
-          '[%s]' % ''.join('%.2f, ' % (k) for k in maxFindsList))
+    print('Max Finds = %d on [%s]' %
+          (maxFinds, ''.join('%.2f (%d), ' % (num, count) for (num, count) in maxFindsList)))
 
 
 
