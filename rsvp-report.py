@@ -1,7 +1,12 @@
 import csv
 import numpy as np
 
-  
+
+ageTots = [0, 0, 0]
+totAll = 0
+linecount = 0
+
+
 # opening the file using "with" 
 # statement
 CHeads = ["Please indicate the number of attendees 13 and older",
@@ -17,7 +22,7 @@ class RsvpRec:
         fixedNameWords = []
         for word in nameWords:
             if len(word) > 1:
-                fixedNameWords.append(word[0] + word[1:].lower())
+                fixedNameWords.append(word[0].upper() + word[1:].lower())
             else:
                 fixedNameWords.append(word)
                 
@@ -40,44 +45,86 @@ def getCounts(line):
 def byLast(rsvp):
     return f'{rsvp.nameLast}, {rsvp.nameFirst}'
 
+def processRsvpList(rsvpList):
+    global linecount, totAll, ageTots
+    for rsvp in sorted(rsvpList, key=byLast):    
+        linecount += 1
+        for n in range(3):
+            ageTots[n] += rsvp.counts[n]
+            totAll += rsvp.counts[n]
+        # print(f'{name:35} {email:35} {C}')
+        fullName = f'{rsvp.nameFirst} {rsvp.nameLast}'
+        print(f'{fullName:35} {rsvp.counts}')
+    
 # counts of each age group as an array
 filenames = ['normal.csv', 'nokids.csv']
 
-linecount = 0
-allRsvps = []
+posRsvps = []
+negRsvps = []
 for filename in filenames:
     # print(f'\nprocessing {filename}...')
     with open(filename, 'r') as data:
         for line in csv.DictReader(data):
             name = line['Name']
             email = line['Email Address']
+            if email == 'kennethdeneau@gmail.com':
+                name = 'Kenneth Jr. Deneau'
             if name == 'Totals':
                 continue
-            linecount += 1
             # do the known fixups
-            if name == 'Jumhoor Rashid':
-                C = [1, 0, 0]
-            elif name == 'Kristin Davey':
-                C = [1, 2, 0]
+            knownFixups = {
+                'Jumhoor Rashid' : [1, 0, 0],
+                'Kristin Davey'  : [1, 2, 0],
+                'Philip Deneau'  : [1, 0, 0],
+                'Cheryl Young'   : [2, 0, 0],
+                }
+            if name in knownFixups.keys():
+                C = knownFixups[name]
             else:
                 # normal parsing
                 C = getCounts(line)
 
-            allRsvps.append(RsvpRec(name, C))
+            rec = RsvpRec(name, C)
+            if C == [0, 0, 0]:
+                negRsvps.append(rec)
+            else:
+                posRsvps.append(rec)
 
-ageTots = [0, 0, 0]
-totAll = 0
+rsvpTypes = [
+    [posRsvps, 'Positive'],
+    [negRsvps, 'Negative'],
+    ]
 
-for rsvp in sorted(allRsvps, key=byLast):    
-    for n in range(3):
-        ageTots[n] += rsvp.counts[n]
-        totAll += rsvp.counts[n]
-    # print(f'{name:35} {email:35} {C}')
-    fullName = f'{rsvp.nameFirst} {rsvp.nameLast}'
-    print(f'{fullName:35} {rsvp.counts}')
+for (rsvpList, str) in rsvpTypes:
+    print(f'\nRSVPs {str}')
+    print('--------------')
+    processRsvpList(rsvpList)
+    
 
 numInvites = 53
 rsvpPct = linecount * 100 / numInvites
 print(f'{linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
-    
+
+expected = [
+    RsvpRec('Don and Susanna Carson', [2, 0, 0]),
+    RsvpRec('Alex Carson', [1, 0, 0]),
+    RsvpRec('Aaron Hazen', [1, 2, 0]),
+    RsvpRec('George Sayre', [2, 1, 1]),
+    RsvpRec('Delaney Young', [2, 0, 0]),
+    RsvpRec('Corey Rogers', [2, 0, 0]),
+    RsvpRec('Christy Harrison', [2, 0, 0]),
+    RsvpRec('Sarah Horton', [2, 0, 0]),
+    RsvpRec('Nick Deneau', [2, 0, 0]),
+    RsvpRec('Chris Deneau', [2, 0, 1]),
+    RsvpRec('Jaiah Rashid', [2, 0, 0]),
+    ]
+
+print(f'\nExpected but No RSVP Yet')
+print('---------------------------')
+processRsvpList(expected)
+
+
+rsvpPct = linecount * 100 / numInvites
+print(f'Including Expected, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
+
         
