@@ -71,14 +71,14 @@ for filename in filenames:
                 name = 'Kenneth Jr. Deneau'
             if name == 'Totals':
                 continue
-            # do the known fixups
+            # now fixups not necessary because can edit rsvp response
             knownFixups = {
                 'Jumhoor Rashid' : [1, 0, 0],
                 'Kristin Davey'  : [1, 2, 0],
                 'Philip Deneau'  : [1, 0, 0],
                 'Cheryl Young'   : [2, 0, 0],
                 }
-            if name in knownFixups.keys():
+            if False and name in knownFixups.keys():
                 C = knownFixups[name]
             else:
                 # normal parsing
@@ -105,7 +105,7 @@ numInvites = 53
 rsvpPct = linecount * 100 / numInvites
 print(f'{linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
 
-expected = [
+expectedYes = [
     RsvpRec('Don and Susanna Carson', [2, 0, 0]),
     RsvpRec('Alex Carson', [1, 0, 0]),
     RsvpRec('Aaron Hazen', [1, 2, 0]),
@@ -119,9 +119,31 @@ expected = [
     RsvpRec('Jaiah Rashid', [2, 0, 0]),
     ]
 
-print(f'\nExpected but No RSVP Yet')
+print(f'\nExpected Yes but No RSVP Yet')
 print('---------------------------')
-processRsvpList(expected)
+processRsvpList(expectedYes)
+rsvpPct = linecount * 100 / numInvites
+print(f'Including Expected Yes, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
+
+expectedNoNames = [
+    'Teymoor and Samina Rashid',
+    'Sikander and Darcy Rashid',
+    'Nadir and Marguerite Rashid',
+    'Robia Rashid and Mike Oppenhuizen',
+    'Eli and Arooj Simmons',
+    'Ujalla and James Ferraro Rashid',
+    'Tashfeen and Fiona Rashid',
+    'Vince and Megan Roberto',
+    'Pastor Martin and Teresa Danner',
+    ]
+
+expectedNo = []
+for name in expectedNoNames:
+    expectedNo.append(RsvpRec(name, [0, 0, 0]))
+                      
+print(f'\nExpected No but No RSVP Yet')
+print('---------------------------')
+processRsvpList(expectedNo)
 
 
 rsvpPct = linecount * 100 / numInvites
