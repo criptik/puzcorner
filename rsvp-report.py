@@ -103,15 +103,10 @@ for (rsvpList, str) in rsvpTypes:
 
 numInvites = 53
 rsvpPct = linecount * 100 / numInvites
-print(f'{linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
+print(f'{linecount} RSVPs from {numInvites} invites ({rsvpPct:.0f}%) totalling {ageTots} = {totAll} all ages')
 
 expectedYes = [
-    RsvpRec('Don and Susanna Carson', [2, 0, 0]),
     RsvpRec('Alex Carson', [1, 0, 0]),
-    RsvpRec('Aaron Hazen', [1, 2, 0]),
-    RsvpRec('George Sayre', [2, 1, 1]),
-    RsvpRec('Delaney Young', [2, 0, 0]),
-    RsvpRec('Corey Rogers', [2, 0, 0]),
     RsvpRec('Christy Harrison', [2, 0, 0]),
     RsvpRec('Sarah Horton', [2, 0, 0]),
     RsvpRec('Nick Deneau', [2, 0, 0]),
@@ -122,18 +117,16 @@ expectedYes = [
 print(f'\nExpected Yes but No RSVP Yet')
 print('---------------------------')
 processRsvpList(expectedYes)
-rsvpPct = linecount * 100 / numInvites
-print(f'Including Expected Yes, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
+if False:
+    rsvpPct = linecount * 100 / numInvites
+    print(f'Including Expected Yes, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.0f}%) totalling {ageTots} = {totAll} all ages')
 
 expectedNoNames = [
-    'Teymoor and Samina Rashid',
     'Sikander and Darcy Rashid',
     'Nadir and Marguerite Rashid',
     'Robia Rashid and Mike Oppenhuizen',
     'Eli and Arooj Simmons',
-    'Ujalla and James Ferraro Rashid',
     'Tashfeen and Fiona Rashid',
-    'Vince and Megan Roberto',
     'Pastor Martin and Teresa Danner',
     ]
 
@@ -147,6 +140,6 @@ processRsvpList(expectedNo)
 
 
 rsvpPct = linecount * 100 / numInvites
-print(f'Including Expected, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
+print(f'Including All Expected, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
 
         
