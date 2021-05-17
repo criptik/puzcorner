@@ -55,6 +55,12 @@ def processRsvpList(rsvpList):
         # print(f'{name:35} {email:35} {C}')
         fullName = f'{rsvp.nameFirst} {rsvp.nameLast}'
         print(f'{fullName:35} {rsvp.counts}')
+
+def printRsvpSummary(linecount, ageTots, intro=''):
+    numInvites = 54
+    rsvpPct = linecount * 100 / numInvites
+    print(f'{intro}{linecount} RSVPs from {numInvites} invites ({rsvpPct:.0f}%) totalling {ageTots} = {sum(ageTots)} all ages')
+
     
 # counts of each age group as an array
 filenames = ['normal.csv', 'nokids.csv']
@@ -100,28 +106,23 @@ for (rsvpList, str) in rsvpTypes:
     print('--------------')
     processRsvpList(rsvpList)
     
-
-numInvites = 53
-rsvpPct = linecount * 100 / numInvites
-print(f'{linecount} RSVPs from {numInvites} invites ({rsvpPct:.0f}%) totalling {ageTots} = {totAll} all ages')
+printRsvpSummary(linecount, ageTots)
 
 expectedYes = [
     RsvpRec('Alex Carson', [1, 0, 0]),
-    RsvpRec('Christy Harrison', [2, 0, 0]),
     RsvpRec('Sarah Horton', [2, 0, 0]),
-    RsvpRec('Nick Deneau', [2, 0, 0]),
-    RsvpRec('Chris Deneau', [2, 0, 1]),
-    RsvpRec('Jaiah Rashid', [2, 0, 0]),
+    RsvpRec('Lali Cheema',  [1, 0, 0]),
     ]
 
-print(f'\nExpected Yes but No RSVP Yet')
+print(f'\nExpected or Verbal Yes but No RSVP Yet')
 print('---------------------------')
 processRsvpList(expectedYes)
 if False:
-    rsvpPct = linecount * 100 / numInvites
-    print(f'Including Expected Yes, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.0f}%) totalling {ageTots} = {totAll} all ages')
+    printRsvpSummary(linecount, ageTots)
 
 expectedNoNames = [
+    'Jaiah Rashid',
+    'Chris Deneau', 
     'Sikander and Darcy Rashid',
     'Nadir and Marguerite Rashid',
     'Robia Rashid and Mike Oppenhuizen',
@@ -134,12 +135,8 @@ expectedNo = []
 for name in expectedNoNames:
     expectedNo.append(RsvpRec(name, [0, 0, 0]))
                       
-print(f'\nExpected No but No RSVP Yet')
+print(f'\nExpected Or Verbal No but No RSVP Yet')
 print('---------------------------')
 processRsvpList(expectedNo)
-
-
-rsvpPct = linecount * 100 / numInvites
-print(f'Including All Expected, {linecount} RSVPs from {numInvites} invites ({rsvpPct:.1f}%) totalling {ageTots} = {totAll} all ages')
-
+printRsvpSummary(linecount, ageTots, 'Including all Expected, ')
         
