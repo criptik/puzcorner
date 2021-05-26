@@ -1,5 +1,6 @@
 import csv
 import numpy as np
+import sys
 
 
 ageTots = [0, 0, 0]
@@ -14,6 +15,14 @@ CHeads = ["Please indicate the number of attendees 13 and older",
           "Please indicate the number of attendees aged 5 or less, if any"
           ]
 CHeadNoKids = "Please indicate the number of adult attendees"
+
+# known fixups not necessary because can edit rsvp response
+knownFixups = {
+    'Jumhoor Rashid' : [1, 0, 0],
+    'Kristin Davey'  : [1, 2, 0],
+    'Philip Deneau'  : [1, 0, 0],
+    'Cheryl Young'   : [2, 0, 0],
+}
 
 class RsvpRec:
     def __init__(self, name, counts):
@@ -61,10 +70,9 @@ def printRsvpSummary(linecount, ageTots, intro=''):
     rsvpPct = linecount * 100 / numInvites
     print(f'{intro}{linecount} RSVPs from {numInvites} invites ({rsvpPct:.0f}%) totalling {ageTots} = {sum(ageTots)} all ages')
 
-    
+
 # counts of each age group as an array
 filenames = ['normal.csv', 'nokids.csv']
-
 posRsvps = []
 negRsvps = []
 for filename in filenames:
@@ -77,13 +85,6 @@ for filename in filenames:
                 name = 'Kenneth Jr. Deneau'
             if name == 'Totals':
                 continue
-            # now fixups not necessary because can edit rsvp response
-            knownFixups = {
-                'Jumhoor Rashid' : [1, 0, 0],
-                'Kristin Davey'  : [1, 2, 0],
-                'Philip Deneau'  : [1, 0, 0],
-                'Cheryl Young'   : [2, 0, 0],
-                }
             if False and name in knownFixups.keys():
                 C = knownFixups[name]
             else:
@@ -110,7 +111,7 @@ printRsvpSummary(linecount, ageTots)
 
 expectedYes = [
     RsvpRec('Alex Carson', [1, 0, 0]),
-    RsvpRec('Sarah Horton', [2, 0, 0]),
+    RsvpRec('Sarah Horton', [1, 0, 0]),
     RsvpRec('Lali Cheema',  [1, 0, 0]),
     ]
 
@@ -131,12 +132,13 @@ expectedNoNames = [
     'Pastor Martin and Teresa Danner',
     ]
 
-expectedNo = []
-for name in expectedNoNames:
-    expectedNo.append(RsvpRec(name, [0, 0, 0]))
+def makeNonAttendee(name):
+    return RsvpRec(name, [0, 0, 0])
+
+expectedNoList = list(map(makeNonAttendee, expectedNoNames))
                       
 print(f'\nExpected Or Verbal No but No RSVP Yet')
 print('---------------------------')
-processRsvpList(expectedNo)
+processRsvpList(expectedNoList)
 printRsvpSummary(linecount, ageTots, 'Including all Expected, ')
         
