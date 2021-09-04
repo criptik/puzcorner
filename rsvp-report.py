@@ -6,7 +6,7 @@ import sys
 ageTots = [0, 0, 0]
 totAll = 0
 linecount = 0
-
+averyNames = []
 
 # opening the file using "with" 
 # statement
@@ -25,7 +25,7 @@ knownFixups = {
 }
 
 class RsvpRec:
-    def __init__(self, name, counts):
+    def __init__(self, name, counts, inviteName=None):
         self.counts = counts
         nameWords = name.split(' ')
         fixedNameWords = []
@@ -37,7 +37,37 @@ class RsvpRec:
                 
         self.nameFirst = ' '.join(fixedNameWords[:-1])
         self.nameLast = fixedNameWords[-1]
-    
+        self.inviteName = inviteName if inviteName is not None else f'using {name}'
+        # generate attenders names
+        self.attenders = []
+        if sum(self.counts) > 0:
+            iw = self.inviteName.split()
+            if iw[0] == 'using':
+                iw = iw[1:]
+            if len(iw) >= 4 and iw[1].lower() == 'and':
+                # format is "John and Mary Smith and xxx and yyy"
+                self.addAttenderCond(iw[0], iw[3])
+                self.addAttenderCond(iw[2], iw[3])
+                n=4
+                while n < len(iw):
+                    if iw[n].lower() == 'and':
+                        self.addAttenderCond(iw[n+1], iw[3])
+                    n += 2    
+            elif iw[1].lower() != 'and':
+                # format is "Joe Smith and Mary Jones and xxx Jones and yyy Smith"
+                self.addAttenderCond(iw[0], iw[1])
+                if len(iw) >= 5 and iw[2].lower() == 'and':
+                    self.addAttenderCond(iw[3], iw[4])
+                    n=5
+                    while n < len(iw):
+                        if iw[n].lower() == 'and':
+                            self.addAttenderCond(iw[n+1], iw[n+2])
+                        n += 3    
+
+    def addAttenderCond(self, first, second):
+        if sum(self.counts) > len(self.attenders):
+            self.attenders.append([first, second])
+            
 def lineCol(line, head):
     txt = line.get(head, '0')
     return int(txt) if txt.isnumeric() else 0
@@ -63,13 +93,30 @@ def processRsvpList(rsvpList):
             totAll += rsvp.counts[n]
         # print(f'{name:35} {email:35} {C}')
         fullName = f'{rsvp.nameFirst} {rsvp.nameLast}'
-        print(f'{fullName:35} {rsvp.counts}')
-
+        if True:
+            print(f'{fullName:35} {rsvp.counts}')
+        else:
+            print(f'{fullName:35} {rsvp.counts} --- {rsvp.inviteName}')
+        for attender in rsvp.attenders:
+            csNames = f'{attender[1]},{attender[0]}'
+            # print(f' ATT: {csNames}')
+            averyNames.append(csNames)
+        if len(rsvp.attenders) != sum(rsvp.counts):
+            print(f'ERROR: attenders list does not match counts')
+            
 def printRsvpSummary(linecount, ageTots, intro=''):
     numInvites = 54
     rsvpPct = linecount * 100 / numInvites
     print(f'{intro}{linecount} RSVPs from {numInvites} invites ({rsvpPct:.0f}%) totalling {ageTots} = {sum(ageTots)} all ages')
 
+
+# the invite files that contain the fuller names related to email address
+inviteFilenames = ['DinnerNames1.csv', 'DinnerNames1-nokids.csv']
+inviteMap = {}
+for filename in inviteFilenames:
+    with open(filename, 'r') as data:
+        for line in csv.DictReader(data):
+            inviteMap[line['Email']] = line['Name']
 
 # counts of each age group as an array
 filenames = ['normal.csv', 'nokids.csv']
@@ -85,13 +132,15 @@ for filename in filenames:
                 name = 'Kenneth Jr. Deneau'
             if name == 'Totals':
                 continue
+            if True:
+                inviteName = inviteMap.get(email, f'{email} not Found in inviteMap, using {name}')
             if False and name in knownFixups.keys():
                 C = knownFixups[name]
             else:
                 # normal parsing
                 C = getCounts(line)
 
-            rec = RsvpRec(name, C)
+            rec = RsvpRec(name, C, inviteName)
             if C == [0, 0, 0]:
                 negRsvps.append(rec)
             else:
@@ -141,4 +190,14 @@ print(f'\nExpected Or Verbal No but No RSVP Yet')
 print('---------------------------')
 processRsvpList(expectedNoList)
 printRsvpSummary(linecount, ageTots, 'Including all Expected, ')
-        
+
+
+# finally generate the list of sorted names of actual attendees in csv format for Avery
+averyOutFile = open('averyDinnerNames.csv', 'w')
+print('LastName,FirstName', file=averyOutFile)
+for attendee in sorted(averyNames):
+    print(attendee, file=averyOutFile)
+
+
+
+
