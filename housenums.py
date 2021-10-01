@@ -8,11 +8,13 @@ lolim = 1
 hilim = 100000
 
 for N in range (lolim, hilim):
+    if (N % 10000 == 0):
+        print(f'...{N}');
     TNS = 2*N*N
     # print(N)
     for S in range (N+1, hilim):
         SS = S*(S+1)
         if (SS == TNS):
-            print (N, TNS, S)
+            print (N, S)
         if (SS > TNS):
             break
