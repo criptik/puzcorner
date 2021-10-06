@@ -27,7 +27,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Puzzle Corner House Number Problem')
     parser.add_argument('--low', type=int, default=3, help='low number of Alice house # for search')
     parser.add_argument('--high', type=int, default=10000000, help='high number of Alice house # for search')
-    parser.add_argument('--alg', default='faost', help='search algorithm to use')
+    parser.add_argument('--alg', default='fast', help='search algorithm to use')
+    parser.add_argument('--showoddeven', default=False, action='store_true', help='show odd&even parts in fast search')
     return parser.parse_args()
 
 
@@ -50,7 +51,7 @@ class SlowSearch(SearchBase):
             if not gmpy2.is_square(prod):
                 continue
             root = math.isqrt(prod)
-            S = root - 1 // 2
+            S = (root - 1) // 2
             self.printFind(N, S)
 
 
@@ -61,7 +62,7 @@ class FastSearch(SearchBase):
         if lolim % 2 == 0:
             lolim = lolim + 1
         hilim = math.isqrt(2 * self.args.high)
-        print(f'hilim = {hilim}')
+        # print(f'hilim = {hilim}')
         
         for oddnum in range (lolim, hilim, 2):
             oddsq = oddnum*oddnum
@@ -76,9 +77,9 @@ class FastSearch(SearchBase):
                 if N > self.args.high:
                     return
                 S = min(oddsq,evensqdoub)
-                self.printFind(N, S, f'    ({evennum} * {oddnum})')
+                extra = f'    ({evennum} * {oddnum})' if self.args.showoddeven else ''
+                self.printFind(N, S, extra)
                 break
-        print(f'oddnum = {oddnum}')
     
     
 #------- main program ------------
