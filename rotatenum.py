@@ -1,23 +1,34 @@
 import sys
 # note: the brute force search thru all numbers is way too slow!
 
-base = 0
-mult = 0
+class SolveBase:
+    def __init__(self, base, mult):
+        if (base > 62):
+            print('base not supported:', base);
+        self.base = base
+        self.mult = mult
 
-def toStr(n,abase):
-    convertString = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    if n < abase:
-        return convertString[n]
-    else:
-        return toStr(n//abase,abase) + convertString[n%abase]
-    
-def rotated(a):
-    return a // base + a%base * base**(len(toStr(a, base)) - 1)
+    # generate the string for the number in the base we are using
+    def toStr(self, n):
+        convertString = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        if n < self.base:
+            return convertString[n]
+        else:
+            return self.toStr(n//self.base) + convertString[n%self.base]
 
-for base in range(2,16):
-    for mult in range(2, base):
-        print('base=', base, 'mult=', mult, '---------')
-        for start in range(1, base):
+class SolveRotateRightOne(SolveBase):
+    # generate the number which is the argument rotated one to the right
+    def rotated(self, n):
+        nstr = self.toStr(n)
+        sliceamt = len(nstr) - 1
+        first = nstr[0:sliceamt]
+        second = nstr[sliceamt]
+        result = second + first
+        return int(result, self.base)
+
+    def getSolution(self):
+        print('base=', self.base, 'mult=', self.mult, '---------')
+        for start in range(1, self.base):
             d = start
             a = 0
             carry = 0
@@ -25,24 +36,30 @@ for base in range(2,16):
             exp = 1
             lastd = 0
             while True:
-                d = d * mult + carry
-                carry = d // base
-                d = d % base
+                d = d * self.mult + carry
+                carry = d // self.base
+                d = d % self.base
                 # print(exp, d, carry, '  ', end='')
                 # if we get back to start with carry==0, we're good
                 if d == start and carry == 0:
                     break
                 # avoid an endless loop
-                if exp > base * mult:
+                if exp > self.base * self.mult:
                     break
-                a = a + d*base**exp
+                a = a + d*self.base**exp
                 lastd = d
-                # print(toStr(a,base))
+                # print(self.toStr(a))
                 exp = exp + 1
 
-            r = rotated(a)
+            r = self.rotated(a)
 
-            if (r == a*mult and lastd != 0):
-                print('ok ', start, toStr(a,base), toStr(r, base), len(toStr(a, base)))
+            if (r == a*self.mult and lastd != 0):
+                print(f'ok  {start} {self.toStr(a)} {self.toStr(r)} ({len(self.toStr(a))})')
             else:
-                print('bad', start, toStr(a,base), toStr(r, base))
+                print(f'bad {start}')
+
+    
+for base in range(3, 11):
+    for mult in range(2, base):
+        solver = SolveRotateRightOne(base, mult)
+        solver.getSolution()
