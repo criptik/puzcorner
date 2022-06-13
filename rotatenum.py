@@ -68,6 +68,16 @@ class SolveRotateRightTwo(SolveBase):
         result = second + first
         return int(result, self.base)
 
+    def checkForStartMatch(self, start, d, a, exp):
+        testa = a + d*self.base**exp
+        if testa // self.base**exp % (self.base**2) == start:
+            # print(f'saw full-d succeed, {self.toStr(d)}, {self.toStr(a)}, {self.toStr(start)}')
+            return testa // self.base**exp
+        if testa // self.base**(exp-1) % (self.base**2) == start:
+            # print(f'saw half-d succeed, exp={exp}, d={self.toStr(d)}, a={self.toStr(a)}, start={self.toStr(start)}, testa={self.toStr(testa)}, retval={self.toStr(testa % self.base**(exp-1))}')
+            return testa % self.base**(exp-1)
+        return 0
+        
     def getSolution(self):
         print('base=', self.base, 'mult=', self.mult, '---------')
         # for start in range(34, 35):
@@ -90,15 +100,20 @@ class SolveRotateRightTwo(SolveBase):
                 # avoid an endless loop
                 if exp > self.base**2 * self.mult:
                     break
-                # print(f'exp={exp}, d={d}, carry={carry}  ')
+                # print(f'exp={exp}, d={self.toStr(d)}, carry={carry}  ')
                 # if we get back to start with carry==0, we're good
-                if d == start and carry == 0:
-                    break
+                if carry == 0:
+                    newa = self.checkForStartMatch(start, d, a, exp) 
+                    if newa != 0:
+                        break
 
             r = self.rotated(a)
 
             if (r == a*self.mult and lastd != 0):
-                print(f'ok  {start} {self.toStr(a)} {self.toStr(r)} ({len(self.toStr(a))})')
+                astrlen = len(self.toStr(a))
+                print(f'ok  base={self.base}, start={self.toStr(start)} {self.toStr(a)} * {self.mult} = {self.toStr(r)} ({astrlen})')
+                if (astrlen % 2 == 1):
+                    print('odd length')
             else:
                 pass
                 # print(f'bad {start}')
