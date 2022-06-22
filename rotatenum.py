@@ -29,12 +29,42 @@ class SolveBase:
         oddtxt = 'odd length' if (astrlen % 2 == 1) else ''
         print(f'{self.toStr(a)} * {self.mult} = {self.toStr(r)} ({astrlen}) {oddtxt}')
 
-    
-class SolveRotateRight(SolveBase):
+class SolveRotate(SolveBase):
     def __init__(self, base, mult, rotateamt):
-        super(SolveRotateRight, self).__init__(base, mult)
+        super(SolveRotate, self).__init__(base, mult)
         self.rotateamt = rotateamt
-        
+
+    def getMinSolution(self):
+        minval = 0
+        for start in range(1, self.base**self.rotateamt):
+            if (self.verbose):
+                print(f'base={self.base}, mult={self.mult}, start={start}')
+            a = self.getSolutionForStart(start)
+            if a != -1:
+                # we got a value of a which might be valid, check if it really is the correct multiple
+                r = self.rotated(a)
+                if self.verbose:
+                    print(f'   a={self.toStr(a)}')
+                    print(f'   r={self.toStr(r)}')
+                    print(f'prod={a*self.mult}')
+                if (r == a*self.mult):
+                    print(f'start={start}, a={self.toStr(a)}')
+                    if self.verbose:
+                        print(f'base {self.base}, mult {self.mult}: ', end='')
+                        self.showSolDetail(a, r)
+                    minval = a if minval == 0 or a < minval else minval
+
+        # we finished all the start values show which had the minimum:
+        if minval == 0:
+            print(f' no solutions found for base {self.base}, mult {self.mult}')
+        else:
+            minrot = self.rotated(minval)
+            print(f'min for base {self.base}, mult {self.mult}, rotateamt={self.rotateamt}: ', end='')
+            self.showSolDetail(minval, minrot)
+
+
+    
+class SolveRotateRight(SolveRotate):
     # generate the number which is the argument rotated the correct amount to the right
     def rotated(self, n):
         nstr = self.toStr(n)
@@ -55,63 +85,40 @@ class SolveRotateRight(SolveBase):
         # return 0 if can't find a match
         return 0
 
-    def getSolution(self):
-        minval = 0
-        if (self.verbose):
-            print('base=', self.base, 'mult=', self.mult, '---------')
-        # for start in range(34, 35):
-        for start in range(1, self.base**self.rotateamt):
-            d = start
-            carry = 0
-            a = 0
-            exp = 0
-            lastd = 0
-            while True:
-                a = a + (d * self.base**exp)
-                lastd = d
-                # print(f'exp={exp}, a={self.toStr(a)}')
-                # compute next d
-                d = d * self.mult + carry
-                carry = d // self.base**self.rotateamt
-                d = d % self.base**self.rotateamt
-                exp = exp + self.rotateamt
-                # avoid an endless loop
-                if exp > self.base**self.rotateamt * self.mult:
-                    break
-                # print(f'exp={exp}, d={self.toStr(d)}, carry={carry}  ')
-                # if we get back to start with carry==0, we're good
-                if carry == 0:
-                    newa = self.checkForStartMatch(start, d, a, exp) 
-                    if newa != 0:
-                        a = newa
-                        break
+    def getSolutionForStart(self, start):
+        d = start
+        carry = 0
+        a = 0
+        exp = 0
+        lastd = 0
+        while True:
+            a = a + (d * self.base**exp)
+            lastd = d
+            # print(f'exp={exp}, a={self.toStr(a)}')
+            # compute next d
+            d = d * self.mult + carry
+            carry = d // self.base**self.rotateamt
+            d = d % self.base**self.rotateamt
+            exp = exp + self.rotateamt
+            # avoid an endless loop
+            if exp > self.base**self.rotateamt * self.mult:
+                return -1
+            # print(f'exp={exp}, d={self.toStr(d)}, carry={carry}  ')
+            # if we get back to start with carry==0, we're good
+            if carry == 0:
+                newa = self.checkForStartMatch(start, d, a, exp) 
+                if newa != 0:
+                    return newa
 
-            # we got out of loop with some value of a, check if it really is the correct multiple
-            r = self.rotated(a)
-            if (r == a*self.mult and lastd != 0):
-                if self.verbose:
-                    print(f'base {self.base}, mult {self.mult}: ', end='')
-                    self.showSolDetail(a, r)
-                minval = a if minval == 0 or a < minval else minval
-            else:
-                pass
-                # print(f'bad {start}')
-
-        # we finished all the start values show which had the minimum:
-        minrot = self.rotated(minval)
-        print(f'min for base {self.base}, mult {self.mult}: ', end='')
-        self.showSolDetail(minval, minrot)
-                
-class SolveRotateLeft(SolveBase):
+class SolveRotateLeft(SolveRotate):
     def __init__(self, base, mult, rotateamt):
-        super(SolveRotateLeft, self).__init__(base, mult)
+        # for now only support rotateamt==1
         if (rotateamt != 1):
             print(f'RotateLeft does not support rotateamt={rotateamt}')
             sys.exit(1)
-        # for now only support rotateamt==1
-        self.rotateamt = 1
+        super(SolveRotateLeft, self).__init__(base, mult, rotateamt)
         
-    # generate the number which is the argument rotated the correct amount to the right
+    # generate the number which is the argument rotated the correct amount to the left
     def rotated(self, n):
         nstr = self.toStr(n)
         first = nstr[0:self.rotateamt]
@@ -147,46 +154,22 @@ class SolveRotateLeft(SolveBase):
                 return result
         # if we got this far without returning, failure
         return -1
+
+    def getSolutionForStart(self, start):
+        a = self.finishSolution(self.toStr(start), 0, start)
+        return a
     
-    def getSolution(self):
-        minval = 0
-        for start in range(1, self.base**self.rotateamt):
-            if (self.verbose):
-                print(f'base={self.base}, mult={self.mult}, start={start}')
-            a = self.finishSolution(self.toStr(start), 0, start)
-            if a != -1:
-                # we got a value of a which might be valid, check if it really is the correct multiple
-                print(f'a={self.toStr(a)}')
-                r = self.rotated(a)
-                if self.verbose:
-                    print(f'   a={self.toStr(a)}')
-                    print(f'   r={self.toStr(r)}')
-                    print(f'prod={a*self.mult}')
-                if (r == a*self.mult):
-                    if self.verbose:
-                        print(f'base {self.base}, mult {self.mult}: ', end='')
-                        self.showSolDetail(a, r)
-                    minval = a if minval == 0 or a < minval else minval
-
-        # we finished all the start values show which had the minimum:
-        if minval == 0:
-            print(f' no solutions found for base {self.base}, mult {self.mult}')
-        else:
-            minrot = self.rotated(minval)
-            print(f'min for base {self.base}, mult {self.mult}, rotateamt={self.rotateamt}: ', end='')
-            self.showSolDetail(minval, minrot)
-
 
 #-------- main code starts here ---------
 if False:
     solver = SolveRotateLeft(5, 4, 1)
     print(solver.toStr(12345678), solver.toStr(solver.rotated(12345678)))
-    result = solver.getSolution()
+    result = solver.getMinSolution()
     print(f'result={result}')
     sys.exit(1)
 
-rotateamt = 1
+rotateamt = 2
 for base in range(2, 11):
     for mult in range(2, base):
         solver = SolveRotateLeft(base, mult, rotateamt)
-        solver.getSolution()
+        solver.getMinSolution()
