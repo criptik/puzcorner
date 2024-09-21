@@ -1,3 +1,5 @@
+import sys
+
 # Formula is 2*N**2 = S(S+1)
 # N = Alice's #
 # S = total on street
