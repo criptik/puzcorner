@@ -20,42 +20,96 @@ import argparse
 # This means there have to be multiple possible answers for a given year
 # and none of a,b,c positions in the answers can be all the same age
 
-class Answer:
-    def __init__(self, a, b, c, genMap):
-        self.abc = [a,b,c]
-        self.genMap = genMap
 
-    def print(self):
-        a,b,c = self.abc
-        cAncBorn = a*b
-        bAncBorn = a*c
-        aAncBorn = b*c
-        aAncAge = curYear - aAncBorn
-        bAncAge = curYear - bAncBorn
-        cAncAge = curYear - cAncBorn
-        print(f'     {a} {b} {c}    {aAncBorn:4}/{aAncAge:3}/{(aAncAge-a):3}  {bAncBorn:4}/{bAncAge:3}/{(bAncAge-b):3}  {cAncBorn:4}/{cAncAge:3}/{(cAncAge-c):3}   {self.genMap}')
-        
-
-        
-def isInAnswers(answers, a, b, c):
-    for ans in answers:
-        if ans.abc == [a,b,c]:
-            return True
-    return False
-
-    
 def parse_args():
     parser = argparse.ArgumentParser(description='Puzzle Corner Ages Convention Problem')
     parser.add_argument('--high', type=int, default=2024, help='high year for search')
     parser.add_argument('--low', type=int, default=1400, help='low year for search')
     parser.add_argument('--minSolutionsToShow',  type=int, default=2, help='show only years having at least this many solutions')
     parser.add_argument('--noStopOnFirst', default=False, action='store_true', help='show all solutions rather than stop at first one')
-    parser.add_argument('--singleGenMap', default=False, action='store_true', help='use only [1,2,3] as the genMap (breaks rules)')
-    parser.add_argument('--showPartialSolvable', default=False, action='store_true', help='require only 1 of a,b,c to be unsolvable instead of all 3 (breaks rules)')
-    parser.add_argument('--allowDuplicateAges', default=False, action='store_true', help='allow solutions where a,b,c can have duplicate ages (breaks rules)')
+    parser.add_argument('--showPartialSolvable', default=False, action='store_true', help='require only 1 of a,b,c to be unsolvable instead of all 3 (breaks [uzzle statement)')
+    parser.add_argument('--allowDuplicateAges', default=False, action='store_true', help='allow solutions where a,b,c can have duplicate ages (breaks puzzle statement )')
     
     return parser.parse_args()
 
+
+class Guess:
+    def __init__(self, curYear, a, b, c, genMap):
+        self.curYear = curYear
+        self.abc = [a,b,c]
+        self.aAncAge = curYear - b*c
+        self.bAncAge = curYear - a*c
+        self.cAncAge = curYear - a*b
+        self.genMap = genMap
+
+    def checkAncestryForGenMap(self, answers):
+        agen, bgen, cgen = genMap
+        a, b, c = self.abc
+        if (couldBeAncestor (a, self.aAncAge, agen)
+            and couldBeAncestor (b, self.bAncAge, bgen)
+            and couldBeAncestor (c, self.cAncAge, cgen)):
+            # map ordered a,b,c to abcMapped based on genMap
+            self.setabcMapped()
+            return True
+        else:
+            return False
+        
+        
+    def setabcMapped(self):
+        self.abcMapped = [0, 0, 0]
+        for idx in range(0, 3):
+            self.abcMapped[self.genMap[idx]-1] = self.abc[idx]
+
+        
+    def print(self):
+        a,b,c = self.abcMapped
+        aAncBorn = b*c
+        bAncBorn = a*c
+        cAncBorn = a*b
+        aAncAge = self.curYear - aAncBorn
+        bAncAge = self.curYear - bAncBorn
+        cAncAge = self.curYear - cAncBorn
+        print(f'     {a} {b} {c}    {aAncBorn:4}/{aAncAge:3}/{(aAncAge-a):3}  {bAncBorn:4}/{bAncAge:3}/{(bAncAge-b):3}  {cAncBorn:4}/{cAncAge:3}/{(cAncAge-c):3}   {self.genMap}')
+        
+class AnswerList:
+    def __init__(self):
+        self.answers = []
+
+    def length(self):
+        return len(self.answers)
+    
+    def append(self, guess):
+        self.answers.append(guess)
+        
+    def alreadyContains(self, guess):
+        for ans in self.answers:
+            if ans.abcMapped == guess.abcMapped:
+                return True
+        return False
+
+    def meetsSolvableReqs(self, args):
+        # special case if user wants years with single answers
+        if len(self.answers) == 1:
+            return True
+        # normal case
+        # count the number of positions where all the answer parts are the same
+        allSameCount = 0
+        for posidx in range(0, 3):
+            posAnswers = []
+            for ans in self.answers:
+                posAnswers.append(ans.abcMapped[posidx])
+            if allSame(posAnswers):
+                allSameCount += 1
+        if args.showPartialSolvable:
+            return allSameCount != 3
+        else: 
+            return allSameCount == 0
+
+    def print(self):
+        for ans in self.answers:
+            ans.print()
+        
+    
 def finishProgram(tries):
     print(f'{tries} tries')
     sys.exit(0)
@@ -63,46 +117,17 @@ def finishProgram(tries):
 def couldBeAncestor(myAge, ancAge, gencount):
     return gencount*15 <= ancAge-myAge <= gencount*45
 
-def abcOrderedByGenMap(a, b, c, genMap):
-    abcBySize = [a, b, c]
-    abcByGenMap = [0, 0, 0]
-    for idx in range(0, 3):
-        abcByGenMap[genMap[idx]-1] = abcBySize[idx]
-    return abcByGenMap
-
 def hasDuplicates(seq):
     return len(seq) != len(set(seq))
 
 def allSame(seq):
     return len(set(seq)) == 1
 
-def meetsSolvableReqs(args, answers):
-    # special case if user wants years with single answers
-    if len(answers) == 1:
-        return True
-    # normal case
-    # count the number of positions where all the answer parts are the same
-    allSameCount = 0
-    for posidx in range(0, 3):
-        posAnswers = []
-        for ans in answers:
-            posAnswers.append(ans.abc[posidx])
-        if allSame(posAnswers):
-            allSameCount += 1
-    if args.showPartialSolvable:
-        return allSameCount != 3
-    else: 
-        return allSameCount == 0
 
 args = parse_args()
 tries = 0
 # for trying the different mappings of generations 1,2,3
-if args.singleGenMap:
-    genMapList = [[1,2,3]]
-else:
-    genMapList = [[1,2,3], [1,3,2], [2,3,1], [2,1,3], [3,2,1], [3,1,2]]
-    # print(args, genMapList)
-    # sys.exit(0)
+genMapList = [[1,2,3], [1,3,2], [2,3,1], [2,1,3], [3,2,1], [3,1,2]]
 
 # minSolutions==1 is special case, allow partial solvable for > 1 as well
 if args.minSolutionsToShow == 1:
@@ -110,7 +135,7 @@ if args.minSolutionsToShow == 1:
     
 # the main loop
 for curYear in range(args.high, args.low, -1):
-    answers = []
+    answers = AnswerList()
     if curYear % 100 == 0:
         print(curYear)
     buf = ''
@@ -126,7 +151,7 @@ for curYear in range(args.high, args.low, -1):
     # So once b gets to the point that curYear-(b*(b-1)) - c < 135, we might as well stop searching the rest of the b
     # similarly when a gets small enough that curYear-(b*a) - c < 135
     
-    for c in range(math.floor(curYear/2), 1, -1):
+    for c in range(1+math.floor(curYear/2), 1, -1):
         bmax1 = c-1 if not args.allowDuplicateAges else c
         bmax = min(math.floor(curYear/c), bmax1)
         for b in range(bmax, 1, -1):
@@ -136,32 +161,26 @@ for curYear in range(args.high, args.low, -1):
             for a in range(amax, 1, -1):
                 if (curYear - (b * a)) - c > 135:
                     break
-                # print(a,b,c)
-                cAncBorn = a*b
-                bAncBorn = a*c
-                aAncBorn = b*c
-                aAncAge = curYear - aAncBorn
-                bAncAge = curYear - bAncBorn
-                cAncAge = curYear - cAncBorn
-                
+                # create the Guess object
                 for genMap in genMapList:
-                    agen, bgen, cgen = genMap
+                    guess = Guess(curYear, a, b, c, genMap)
+                    # check ancestry limits and add to answers if ok
                     tries = tries + 1
                     # debugging breakpoint
                     # if curYear >= 2023 and a == 43 and b==44 and c==44 and genMap == [1,2,3]:
                     #    print('Break')
-                    if (couldBeAncestor (a, aAncAge, agen)
-                        and couldBeAncestor (b, bAncAge, bgen)
-                        and couldBeAncestor (c, cAncAge, cgen)):
-                        # map ordered a,b,c to real a,b,c based on genMap
-                        aMap, bMap, cMap = abcOrderedByGenMap(a, b, c, genMap)
-                        if not isInAnswers(answers, aMap, bMap, cMap):
-                            answers.append(Answer(aMap, bMap, cMap,genMap))
-                             
-    if len(answers) >= args.minSolutionsToShow and meetsSolvableReqs(args, answers):
-        print(f'{curYear}: {len(answers)} Solutions')
-        for ans in answers:
-            ans.print()
+                    if guess.checkAncestryForGenMap(answers):
+                        if not answers.alreadyContains(guess):
+                            answers.append(guess)
+
+
+    # finished with loop for this year, check total accumulated answers
+    # debugging
+    # if curYear == 1457:
+    #    print('Break')
+    if answers.length() >= args.minSolutionsToShow and answers.meetsSolvableReqs(args):
+        print(f'{curYear}: {answers.length()} Solutions')
+        answers.print()
         if not args.noStopOnFirst:
             finishProgram(tries)
 
