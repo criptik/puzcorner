@@ -184,3 +184,4 @@ for curYear in range(args.high, args.low, -1):
         if not args.noStopOnFirst:
             finishProgram(tries)
 
+finishProgram(tries)
