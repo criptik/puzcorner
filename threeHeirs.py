@@ -133,8 +133,24 @@ class MyDict:
             for info in ary:
                 print(f'{info.num} ', end="")
             print(']')
-        
-        
+
+
+def checkForSameLen1InDicts(dicts):
+    prodDict, sumsqDict, sumprodDict = dicts
+
+    for key, info in prodDict.len1KeyDict.items():
+        num = info.num
+        count = 1
+        for otherdict in [sumsqDict, sumprodDict]:
+            for othkey, othinfo in otherdict.len1KeyDict.items():
+                othnum = othinfo.num
+                if othnum == num:
+                    count += 1
+                    # print(f' match for {othnum} in {otherdict.name}, count={count}, adict={adict.name}') 
+                    break
+        if count == 3:
+            print(f' {num} seen in all 3 len1 dicts')
+    
 prodDict = MyDict('prodDict')
 sumsqDict = MyDict('sumsqDict')
 sumprodDict = MyDict('sumprodDict')
@@ -158,7 +174,8 @@ for n in range(1, 6):
         dbglog(f'{adict.name} len1KeyDict len: {len(adict.len1KeyDict)}')
     for adict in dicts:
         adict.show()
-
+    checkForSameLen1InDicts(dicts)
+        
     for adict in dicts:
         # for each dict, go thru and find any len 1 items
         # and remove them from all 3 dicts
