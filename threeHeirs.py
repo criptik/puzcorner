@@ -138,6 +138,7 @@ class MyDict:
 def checkForSameLen1InDicts(dicts):
     prodDict, sumsqDict, sumprodDict = dicts
 
+    seenAll3List = []
     for key, info in prodDict.len1KeyDict.items():
         num = info.num
         count = 1
@@ -149,8 +150,10 @@ def checkForSameLen1InDicts(dicts):
                     # print(f' match for {othnum} in {otherdict.name}, count={count}, adict={adict.name}') 
                     break
         if count == 3:
-            print(f' {num} seen in all 3 len1 dicts')
-    
+            seenAll3List.append(num)
+
+    print(f'{len(seenAll3List)} nums seen with len1 in all 3 dicts: {seenAll3List}')
+            
 prodDict = MyDict('prodDict')
 sumsqDict = MyDict('sumsqDict')
 sumprodDict = MyDict('sumprodDict')
@@ -167,7 +170,7 @@ for a in range(1,10):
 
 # we know that no one's original number was a len1
 # so for each len1 entry, we can remove it from each of the three dicts
-for n in range(1, 6):
+for n in range(1, 10):
     print(f'End of hour {n}')
     for adict in dicts:
         adict.buildLen1KeyDict()
